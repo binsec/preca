@@ -4,7 +4,7 @@ Constraint acquisition based precondition learner
 
 ## Description
 
-Paper: Automated Program Analysis: Revisiting Precondition Inference through Constraint Acquisition
+Paper: *Automated Program Analysis: Revisiting Precondition Inference through Constraint Acquisition*
 
 Authors: [Grégoire Menguy](https://gregoiremenguy.github.io/), [Sébastien Bardin](http://sebastien.bardin.free.fr/), [Nadjib Lazaar](http://www.lirmm.fr/~lazaar/), [Arnaud Gotlieb](https://www.simula.no/people/arnaud)
 
