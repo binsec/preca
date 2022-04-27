@@ -10,7 +10,7 @@ Authors: [Grégoire Menguy](https://gregoiremenguy.github.io/), [Sébastien Bard
 
 Published at: [The 31st International Joint Conference on Artificial Intelligence (IJCAI 2022)](https://ijcai-22.org/)
 
-Details about the paper: [https://binsec.github.io/new/publication/1970/01/01/nutshell-ijcai-22.html](https://binsec.github.io/new/publication/1970/01/01/nutshell-ijcai-22.html)
+Details about the paper: [https://binsec.github.io/nutshells/ijcai-22.html](https://binsec.github.io/nutshells/ijcai-22.html)
 
 
 ## Artifacts
