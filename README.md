@@ -15,5 +15,5 @@ Details about the paper: [https://binsec.github.io/nutshells/ijcai-22.html](http
 
 ## Artifacts
 
-A virtual machine (~2.6G) is available [here](https://drive.google.com/file/d/1NbkenuEezOSMBUalixnOE80tFnq1s--Z/view). It contains the PreCA jar file, the dataset and scripts to exercise PreCA and replay major experiments. The user and root password is "password".
+A virtual machine (~2.6G) is available [here](https://zenodo.org/record/6513522#.YnD1GnVfjmE). It contains the PreCA jar file, the dataset and scripts to exercise PreCA and replay major experiments. The user and root password is "password".
 
