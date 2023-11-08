@@ -1,0 +1,15 @@
+# Variables Setup
+nargs: 3
+types: PTR, PTR, UINT
+globals: false, false, false
+
+# Emulator Options
+bin: datasets/binaries/postcond/strncat
+binsec: datasets/binsec_ini/ijcai22/post/strncat.ini
+precond: (and (valid v0) (or (eq v2 #x00000000) (valid v1)))
+
+
+# Language
+bias: Valid_X, Alias_X_Y, PtrLT_X_Y, PtrGT_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
+
+# Conacq options

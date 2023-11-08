@@ -1,0 +1,122 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>preca</groupId>
+	<artifactId>preca</artifactId>
+	<version>0.1.0</version>
+	<build>
+		<sourceDirectory>src</sourceDirectory>
+		<!-- <testSourceDirectory>tests</testSourceDirectory> -->
+		<resources>
+			<resource>
+				<directory>src</directory>
+				<excludes>
+					<exclude>**/*.java</exclude>
+				</excludes>
+			</resource>
+			<!-- <resource>
+				<directory>resources</directory>
+			</resource> -->
+		</resources>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.0</version>
+				<configuration>
+					<source>1.8</source>
+					<target>1.8</target>
+				</configuration>
+			</plugin>
+			
+			<plugin>
+				<!-- Build an executable JAR -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.1.0</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<!-- here we specify that we want to use the main method within the App class -->
+							<mainClass>io.github.binsec.expe.PreCA</mainClass>
+						</manifest>
+					</archive>
+				</configuration>
+			</plugin>
+			
+			<plugin>
+			    <artifactId>maven-assembly-plugin</artifactId>
+			    <configuration>
+			        <archive>
+			        <manifest>
+			        	<addClasspath>true</addClasspath>
+			            <mainClass>io.github.binsec.expe.PreCA</mainClass>
+			        </manifest>
+			        </archive>
+			        <descriptorRefs>
+			        <descriptorRef>jar-with-dependencies</descriptorRef>
+			        </descriptorRefs>
+			        <finalName>preca</finalName>
+              		<!-- <appendAssemblyId>false</appendAssemblyId> -->
+			    </configuration>
+			    
+			    <executions>
+			        <execution>
+			          <id>make-assembly</id> <!-- this is used for inheritance merges -->
+			          <phase>package</phase> <!-- bind to the packaging phase -->
+			          <goals>
+			            <goal>single</goal>
+			          </goals>
+			        </execution>
+			      </executions>
+			 </plugin>
+			
+		</plugins>
+	</build>
+	<dependencies>
+		<!-- https://mvnrepository.com/artifact/org.choco-solver/choco-solver -->
+		<dependency>
+			<groupId>org.choco-solver</groupId>
+			<artifactId>choco-solver</artifactId>
+			<version>4.10.2</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
+		<dependency>
+			<groupId>commons-cli</groupId>
+			<artifactId>commons-cli</artifactId>
+			<version>1.4</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.11</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.ow2.sat4j/org.ow2.sat4j.core -->
+		<dependency>
+			<groupId>org.ow2.sat4j</groupId>
+			<artifactId>org.ow2.sat4j.core</artifactId>
+			<version>2.3.5</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.json/json -->
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+			<version>20210307</version>
+		</dependency>
+		
+		<dependency>
+ 			<groupId>org.ow2.sat4j</groupId>
+  			<artifactId>org.ow2.sat4j.pb</artifactId>
+  			<version>2.3.4</version>
+		</dependency>
+	</dependencies>
+	<properties>
+    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  	</properties>
+</project>

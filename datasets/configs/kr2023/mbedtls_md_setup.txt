@@ -1,0 +1,15 @@
+# Variables Setup
+nargs: 5
+types: PTR, PTR, UINT, UINT, INT
+globals: false, false, false, false, false
+
+# Emulator Options
+bin: datasets/binaries/crypt_and_hash
+binsec: datasets/binsec_ini/mbed/mbedtls_md_setup.ini
+precond: (and (valid v0) (valid v1) (not (alias v0 v1)) (or (eq v2 #x00000001) (eq v2 #x00000002) (eq v2 #x00000003) (eq v2 #x00000004) (eq v2 #x00000005) (eq v2 #x00000006) (eq v2 #x00000007)) (or (eq v4 #x00000000) (ugt v3 #x00000000)))
+
+# Language
+bias: Valid_X, Alias_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, Eq_X_1, Eq_X_2, Eq_X_3, Eq_X_4, Eq_X_5, Eq_X_6, Eq_X_7, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
+#bias: Valid_X, Alias_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_0, GT_X_0, LT_v2_8, Eq_X_Y, LT_X_Y, GT_X_Y
+
+# Conacq Options

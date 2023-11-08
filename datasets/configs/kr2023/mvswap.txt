@@ -1,0 +1,17 @@
+# Variables Setup
+nargs: 4
+types: PTR, INT, INT, INT
+globals: false, false, false, false
+
+# Emulator Options
+bin: datasets/binaries/mvswap
+binsec: datasets/binsec_ini/ijcai22/nopost/mvswap.ini
+
+# Expected result
+# precond: And(Or(v[3] <= 0, v[0] != 0), Or(v[3] <= 0, v[1] >=0), Or(v[3] <= 0, v[2] >= 0))
+precond: (and (or (not (sgt v3 #x00000000)) (valid v0)) (or (not (sgt v3 #x00000000)) (sgt v1 #x00000000)) (or (not (sgt v3 #x00000000)) (sgt v2 #x00000000)))
+
+# Language
+bias: Valid_X, Alias_X_Y, PtrLT_X_Y, PtrGT_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
+
+# Conacq options

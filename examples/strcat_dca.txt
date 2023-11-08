@@ -1,0 +1,25 @@
+# Variables Setup
+nargs: 2
+types: PTR, PTR
+globals: false, false
+
+# Emulator Options
+bin: datasets/binaries/strcat
+binsec: datasets/binsec_ini/ijcai22/nopost/strcat.ini
+
+# Expected result
+precond: And(v[0] != 0, v[1] != 0, Or(Strlen(v[1]) == 0, And(v[0] != v[1], Or(v[0] > v[1], v[1] >= v[0] + Strlen(v[0]) + 1), Or(v[1] > v[0], v[0] >= v[1] + Strlen(v[1]) +1))))
+
+# Acquisition Options
+active: true
+disj: mss
+back: true
+verbose: true
+json: false
+timeout: 60
+emultimeout: 5
+action_emultimeout: false
+simplify: true
+
+# Language
+bias: Valid_X, Alias_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y

@@ -1,0 +1,20 @@
+(lang dune 3.0)
+(using dune_site 0.1)
+(generate_opam_files true)
+(maintainers "BINSEC <binsec@saxifrage.saclay.cea.fr>")
+
+(authors
+  "Grégoire Menguy"
+)
+(license LGPL-2.1-or-later)
+(homepage "https://binsec.github.io")
+(bug_reports "mailto:binsec@saxifrage.saclay.cea.fr")
+
+
+(package
+ (name libconcrete)
+ (synopsis "Precondition inference with constraint acquisition")
+ (depends
+  (binsec (>= 0.8.1))
+  unisim_archisec))
+

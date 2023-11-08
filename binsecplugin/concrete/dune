@@ -1,0 +1,19 @@
+(library
+ (public_name libconcrete)
+ (name libconcrete)
+ (libraries binsec.sse)
+ (flags
+   (:standard -open Binsec -open Libsse -open Plugins))
+)
+
+(plugin
+ (name concrete)
+ (libraries libconcrete)
+ (site
+  (binsec plugins)))
+
+(plugin
+ (name emul)
+ (libraries libconcrete)
+ (site
+  (binsec plugins)))

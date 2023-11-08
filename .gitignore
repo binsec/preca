@@ -1,0 +1,12 @@
+/target/
+/preca/
+.settings/
+*.class
+bin
+.classpath
+.project
+**/*.pyc
+**/__pycache__
+binsecplugin/concrete/binsec
+binsecplugin/concrete/_build
+_opam
