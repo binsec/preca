@@ -122,12 +122,12 @@ public class ACQ_CONACQ {
 			Unit unit = this.satSolver.addVar(c, newvarname);
 			this.mapping.add(c, unit);
 			
-			ACQ_IConstraint neg = c.getNegation();
-			if (!bias.contains(neg)) {
-				newvarname = neg.getName() + neg.getVariables();
-				unit = this.satSolver.addVar(neg, newvarname);
-				this.mapping.add(neg, unit);
-			}
+//			ACQ_IConstraint neg = c.getNegation();
+//			if (!bias.contains(neg)) {
+//				newvarname = neg.getName() + neg.getVariables();
+//				unit = this.satSolver.addVar(neg, newvarname);
+//				this.mapping.add(neg, unit);
+//			}
 		}
 		
 		for (ACQ_IConstraint c : knownconstraints.getConstraints()) {
@@ -391,12 +391,13 @@ public class ACQ_CONACQ {
 		return res;
 	}
 	
-	protected Formula BuildFormula(Boolean splittable, CNF T, ContradictionSet N, Clause alpha, int t, int epsilon) {
+	protected Formula BuildFormula(Boolean splittable, CNF T, ContradictionSet N, Clause alpha, int t, int epsilon) throws TimeoutException {
 		Formula res =  new Formula();
 		if (!alpha.isEmpty()) {
 			res.addCnf(T);
 			// No need to remove unary negative as it is never added to T
 			for(ACQ_IConstraint c : bias_minus.getConstraints()) {	
+				istimeouted();
 				// No need to check if T contains unary negative as it is never added to T 
 				boolean cont = alpha.contains(c);
 				if (splittable && !cont && !alpha.contains(c.getNegation())) {
@@ -429,6 +430,7 @@ public class ACQ_CONACQ {
 			Clause toadd = new Clause();
 			// All constraints not in bias_minus are set to false
 			for (ACQ_IConstraint constr : bias_minus.getConstraints()) {
+				istimeouted();
 				if (isUnset(constr, T, N)) {
 					//constr is unset
 					Unit toremove = mapping.get(constr.getNegation()).clone();
