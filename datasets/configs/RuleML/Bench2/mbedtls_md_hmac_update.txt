@@ -1,0 +1,23 @@
+# Variables Setup
+nargs: 7
+#      ctx, md_info, md_ctx, hmac_ctx, type, input, ilen
+types: PTR, PTR, PTR, PTR, UINT, PTR, UINT
+globals: false, false, false, false, false, false, false
+arch : X86-64
+
+
+# Emulator Options
+bin: datasets/binaries/crypt_and_hash
+binsec: datasets/binsec_ini/mbed/mbedtls_md_hmac_update.ini
+precond: (and (valid v0) (valid v1) (not (alias v0 v1)) (valid v3) (ugt v4 #x00000000) (ult v4 #x00000008) (or (eq v6 #x00000000) (valid v2)) (or (eq v6 #x00000000) (valid v5)))
+
+
+# Language
+bias: Valid_X, Alias_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_8, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
+
+# Acquisition Options
+
+
+
+ 
+

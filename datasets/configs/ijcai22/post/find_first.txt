@@ -2,6 +2,7 @@
 nargs: 4
 types: PTR, INT, PTR, INT
 globals: false, false, false, false
+arch : X86-64
 
 # Bounded variables (in quantifiers)
 nboundedargs: 2

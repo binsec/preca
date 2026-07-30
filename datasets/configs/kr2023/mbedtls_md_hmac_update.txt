@@ -2,6 +2,7 @@
 nargs: 7
 #      ctx, md_info, md_ctx, hmac_ctx, type, input, ilen
 types: PTR, PTR, PTR, PTR, UINT, PTR, UINT
+arch : X86-64
 globals: false, false, false, false, false, false, false
 
 # Emulator Options

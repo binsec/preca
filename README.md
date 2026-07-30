@@ -55,8 +55,7 @@ The `preca.jar` file is available to use PreCA without compiling it. See the [us
 
 You can compile the code using maven (the generated jar file is then in the `target` directory):
 ```shell
-mvn clean compile assembly:single
-cp target/<jarfile> preca.jar
+make
 ```
 
 # Usage
@@ -80,8 +79,10 @@ java -jar preca.jar -helpconf
 
 To check that your install works correctly, you can run PreCA over the given strcat example:
 ```shell
-java -ea -jar preca.jar -file ./examples/strcat_conacq.txt
+java -ea -jar preca.jar -file ./examples/strcat_<tool>.txt
 ```
+where <tool> is one of conacq, dca, cany, candy. For instance, to run
+the conacq variant
 
 The output should end with:
 ```

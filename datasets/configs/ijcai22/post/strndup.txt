@@ -2,6 +2,7 @@
 nargs: 2
 types: PTR, UINT
 globals: false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/postcond/strndup

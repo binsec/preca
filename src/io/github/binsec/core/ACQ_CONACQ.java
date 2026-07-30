@@ -1,54 +1,54 @@
-/****************************************************************************/
-/*  This file is part of PRECA.                                             */
-/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.  */
-/*                                                                          */
-/*  Copyright (C) 2019-2023                                                 */
-/*    CEA (Commissariat à l'énergie atomique et aux énergies                */
-/*         alternatives)                                                    */
-/*                                                                          */
-/*  you can redistribute it and/or modify it under the terms of the GNU     */
-/*  Lesser General Public License as published by the Free Software         */
-/*  Foundation, version 2.1.                                                */
-/*                                                                          */
-/*  It is distributed in the hope that it will be useful,                   */
-/*  but WITHOUT ANY WARRANTY; without even the implied warranty of          */
-/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           */
-/*  GNU Lesser General Public License for more details.                     */
-/*                                                                          */
-/*  See the GNU Lesser General Public License version 2.1                   */
-/*  for more details (enclosed in the file licenses/LGPLv2.1).              */
-/*                                                                          */
-/****************************************************************************/
+/******************************************************************************/
+/*  This file is part of PRECA.                                               */
+/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.    */
+/*                                                                            */
+/*  Copyright (C) 2019-2026                                                   */
+/*  CEA (Commissariat à l'énergie atomique et aux énergies                    */
+/*       alternatives)                                                        */
+/*                                                                            */
+/*  you can redistribute it and/or modify it under the terms of the GNU       */
+/*  Lesser General Public License as published by the Free Software           */
+/*  Foundation, version 2.1.                                                  */
+/*                                                                            */
+/*  It is distributed in the hope that it will be useful,                     */
+/*  but WITHOUT ANY WARRANTY; without even the implied warranty of            */
+/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
+/*  GNU Lesser General Public License for more details.                       */
+/*                                                                            */
+/*  See the GNU Lesser General Public License version 2.1                     */
+/*  for more details (enclosed in the file licenses/LGPLv2.1).                */
+/*                                                                            */
+/******************************************************************************/
 
 package io.github.binsec.core;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeoutException;
 
-import io.github.binsec.core.acqconstraint.ACQ_ConjunctionConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_DisjunctionConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_IConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_Network;
+import constracq.core.acqconstraint.ACQ_ConjunctionConstraint;
+import constracq.core.acqconstraint.ACQ_DisjunctionConstraint;
+import constracq.core.acqconstraint.ACQ_IConstraint;
+import constracq.core.acqconstraint.ACQ_Network;
+import constracq.core.acqconstraint.ConstraintFactory;
+import constracq.core.acqconstraint.ConstraintFactory.ConstraintSet;
+import constracq.core.acqsolver.ACQ_ConstraintSolver;
+import constracq.core.acqsolver.ACQ_IDomain;
+import constracq.core.learner.ACQ_Bias;
+import constracq.core.learner.ACQ_Learner;
+import constracq.core.learner.ACQ_Query;
+import constracq.tools.Chrono;
 import io.github.binsec.core.acqconstraint.CNF;
 import io.github.binsec.core.acqconstraint.Clause;
-import io.github.binsec.core.acqconstraint.ConstraintFactory;
 import io.github.binsec.core.acqconstraint.ConstraintMapping;
 import io.github.binsec.core.acqconstraint.Contradiction;
 import io.github.binsec.core.acqconstraint.ContradictionSet;
 import io.github.binsec.core.acqconstraint.Formula;
 import io.github.binsec.core.acqconstraint.Unit;
-import io.github.binsec.core.acqconstraint.ConstraintFactory.ConstraintSet;
-import io.github.binsec.core.acqsolver.ACQ_ConstraintSolver;
-import io.github.binsec.core.acqsolver.ACQ_IDomain;
 import io.github.binsec.core.acqsolver.SATModel;
 import io.github.binsec.core.acqsolver.SATSolver;
 import io.github.binsec.core.acqvariable.ACQ_CellVariable;
-import io.github.binsec.core.learner.ACQ_Bias;
-import io.github.binsec.core.learner.ACQ_Learner;
-import io.github.binsec.core.learner.ACQ_Query;
 import io.github.binsec.core.learner.Answer;
 import io.github.binsec.core.learner.AnswerTimeoutException;
-import io.github.binsec.core.tools.Chrono;
 import io.github.binsec.core.tools.QueryPrinter;
 
 public class ACQ_CONACQ {
@@ -64,6 +64,9 @@ public class ACQ_CONACQ {
 	protected SATSolver satSolver;
 	protected ConstraintFactory constraintFactory;
 	protected ACQ_Network learned_network;
+	protected ACQ_Network learned_underapprox_network;
+	protected ACQ_Network learned_overapprox_network;
+
 	protected ACQ_Bias knownconstraints = null;
 	protected ArrayList<ACQ_Network> strategy = null;
 	protected ContradictionSet backgroundKnowledge = null;
@@ -79,7 +82,12 @@ public class ACQ_CONACQ {
 	protected boolean weighted = false;
 	protected ACQ_Query collapsingQuery;
 	protected QueryPrinter qp;
-
+	protected int nbUNSATCore;
+	protected ArrayList<String> listMS = new ArrayList<>();
+	protected ArrayList<String> listMG = new ArrayList<>();
+	protected ArrayList<String> distances = new ArrayList<>();
+	protected ArrayList<String> learnedQueries = new ArrayList<>();
+	
 	public ACQ_CONACQ(ACQ_Learner learner, ACQ_Bias bias, SATSolver sat, ACQ_ConstraintSolver solv) {
 		this.bias = bias;
 		this.constraintFactory = bias.network.getFactory();
@@ -104,6 +112,7 @@ public class ACQ_CONACQ {
 		assert mapping.size() >= bias.getSize(): "mapping must contain more elements than bias";
 		filter_conjunctions();
 		this.bias_minus = bias.copy();
+		this.listMS.add(bias_minus.network.toSmtlib());
 		
 	}
 	
@@ -122,12 +131,12 @@ public class ACQ_CONACQ {
 			Unit unit = this.satSolver.addVar(c, newvarname);
 			this.mapping.add(c, unit);
 			
-//			ACQ_IConstraint neg = c.getNegation();
-//			if (!bias.contains(neg)) {
-//				newvarname = neg.getName() + neg.getVariables();
-//				unit = this.satSolver.addVar(neg, newvarname);
-//				this.mapping.add(neg, unit);
-//			}
+			/*ACQ_IConstraint neg = c.getNegation();
+			if (!bias.contains(neg)) {
+				newvarname = neg.getName() + neg.getVariables();
+				unit = this.satSolver.addVar(neg, newvarname);
+				this.mapping.add(neg, unit);
+			}*/
 		}
 		
 		for (ACQ_IConstraint c : knownconstraints.getConstraints()) {
@@ -149,13 +158,16 @@ public class ACQ_CONACQ {
 		assert mapping.size() >= bias.getSize(): "mapping must contain more elements than bias";
 		filter_conjunctions();
 		this.bias_minus = bias.copy();
+		this.listMS.add(bias_minus.network.toSmtlib());
 		
 	}
 	
 	public void setQueryPrinter(QueryPrinter qp) {
 		this.qp = qp;
 	}
-	
+	public ArrayList<String> getLearnedQueries(){
+		return this.learnedQueries;
+	}
 	public void setWeighted(boolean b) {
 		weighted = b;
 	}
@@ -232,6 +244,14 @@ public class ACQ_CONACQ {
 	public ACQ_Network getLearnedNetwork() {
 		return learned_network;
 	}
+
+	public ACQ_Network getLearnedUnderApproxNetwork() {
+		return learned_underapprox_network;
+	}
+
+	public ACQ_Network getLearnedOverApproxNetwork() {
+		return learned_overapprox_network;
+	}
 	
 	public ACQ_Query getCollapsingQuery() {
 		if (collapsingQuery == null) collapsingQuery = T.getInconsistency();
@@ -291,7 +311,7 @@ public class ACQ_CONACQ {
 			}
 			skip_buildformula = false;
 			//System.out.println("Start SAT solver");
-			SATModel model = satSolver.solve(form);
+			SATModel model = satSolver.solveConacq(form);
 			//System.out.println("Stop SAT solver");
 			if (satSolver.isTimeoutReached()) {
 				assert(q.isEmpty());
@@ -337,6 +357,7 @@ public class ACQ_CONACQ {
 					//System.out.println(unsatCore.toNetwork());
 					assert (unsatCore != null && !unsatCore.isEmpty());
 					N.add(unsatCore);
+					nbUNSATCore +=1;
 					/*if (!alpha.isEmpty()) {
 						// Here splittalbe, alpha (!= empty) and T does not change (only N change) 
 						// so BuildFormula will return the same formula 
@@ -354,6 +375,9 @@ public class ACQ_CONACQ {
 		if (q.isEmpty())
 			q = irredundantQuery(T);
 		return q;
+	}
+	protected int getNbUNSATCore() {
+		return nbUNSATCore;
 	}
 	
 	protected ACQ_Network filternet(ACQ_Network net) {
@@ -396,7 +420,7 @@ public class ACQ_CONACQ {
 		if (!alpha.isEmpty()) {
 			res.addCnf(T);
 			// No need to remove unary negative as it is never added to T
-			for(ACQ_IConstraint c : bias_minus.getConstraints()) {	
+			for(ACQ_IConstraint c : bias_minus.getConstraints()) {
 				istimeouted();
 				// No need to check if T contains unary negative as it is never added to T 
 				boolean cont = alpha.contains(c);
@@ -462,7 +486,7 @@ public class ACQ_CONACQ {
 		tmp1.add(new Clause(unit));
 		tmp2.add(new Clause(neg));
 		
-		return satSolver.solve(tmp1) != null && satSolver.solve(tmp2) != null;
+		return satSolver.solve(toFormula(tmp1)) != null && satSolver.solve(toFormula(tmp2)) != null;
 	}
 	
 	protected ACQ_Query irredundantQuery(CNF T) {
@@ -579,7 +603,7 @@ public class ACQ_CONACQ {
 				this.timeouted = true;
 				break;
 			}
-			if (verbose) System.out.println("[INFO] replay query " + qp.toString(membership_query) + "::" + membership_query.isPositive());
+			if (verbose) System.out.println("[INFO] replay query " + qp.toString(membership_query) + "::" + membership_query.getClassification());
 			ConstraintSet kappa = bias_minus.getKappa(membership_query);
 			//assert kappa.size() > 0;
 			if (kappa.size() == 0 && membership_query.isNegative()) {
@@ -599,6 +623,7 @@ public class ACQ_CONACQ {
 						T.unitPropagate(unit, chrono);
 					}
 					bias_minus.reduce(kappa);
+					this.listMS.add(bias_minus.network.toSmtlib());
 				}
 				else {
 					// make sure to not add two times the same clause
@@ -623,6 +648,7 @@ public class ACQ_CONACQ {
 							
 							// Remove negation
 							bias_minus.reduce(c.getNegation());
+							this.listMS.add(bias_minus.network.toSmtlib());
 							unit = mapping.get(c.getNegation()).clone();
 							unit.setNeg();
 							T.unitPropagate(unit, chrono);
@@ -669,8 +695,12 @@ public class ACQ_CONACQ {
 					throw new AnswerTimeoutException("Answer timeouted");
 				}
 				ConstraintSet kappa = bias_minus.getKappa(membership_query);
-				if (verbose) System.out.println("::" + membership_query.isPositive());
+				if (verbose) System.out.println("::" + membership_query.getClassification());
 				asked.add(membership_query);
+				/*for(ACQ_IConstraint c : bias.getConstraints()){
+					if(kappa.contains(c))continue;
+					System.out.println(c);
+				}*/
 				//assert kappa.size() > 0;
 				
 				if (kappa.size() == 0 && membership_query.isNegative()) {
@@ -736,8 +766,21 @@ public class ACQ_CONACQ {
 		return collapse;
 	}
 	
+	public int distance(ACQ_Network MSS1, ACQ_Network MSS2){
+		int d =0;
+		for(ACQ_IConstraint c : MSS1.getConstraints()){
+			if(!MSS2.contains(c)) d+=1;
+		}
+		return d;
+	}
+	
 	public boolean process() throws Exception {
 		this.t0 = System.currentTimeMillis();
+		chrono.start("pos_queries");
+		chrono.start("neg_queries");
+
+		//chrono.start("gen_all_queries");
+		//ArrayList<String> classificatrions= new ArrayList<>();
 		
 		boolean convergence = false;
 		boolean collapse = false;
@@ -753,8 +796,10 @@ public class ACQ_CONACQ {
 		// assert(learned_network.size()==0);
 		chrono.start("total_acq_time");
 		chrono.start("first_constr_learned");
-		collapse = preprocess(T, N);
+		//collapse = preprocess(T, N);
 		
+		ACQ_Network newMSS = null;
+		ACQ_Network prevMarcoMSS = null;
 		while (active && !(collapse || convergence)) {
 			if (istimeouted_nothrow()) {
 				this.timeouted = true;
@@ -790,11 +835,30 @@ public class ACQ_CONACQ {
 				if (verbose) System.out.print(qp.toString(membership_query));
 				Answer answer = learner.ask(membership_query);
 				if (answer == Answer.UKN) {
-					throw new AnswerTimeoutException("Answer timeouted");
+					chrono.stop("neg_queries");
+					chrono.start("neg_queries");
+					//throw new AnswerTimeoutException("Answer timeouted");
+					
 				}
-				ConstraintSet kappa = bias_minus.getKappa(membership_query);
+				learnedQueries.add(membership_query.toString());
+				ConstraintSet kappa = bias_minus.getKappa(membership_query); //ne pas calculer deux fois le kappa
 				assert kappa.size() > 0;
-				if (verbose) System.out.println("::" + membership_query.isPositive());
+				if (verbose) System.out.println("::" + membership_query.getClassification());
+				/*for(ACQ_IConstraint c : bias.getConstraints()){
+					if(kappa.contains(c))continue;
+					System.out.println(c);
+				}*/
+				
+				newMSS = membership_query.getM(bias);
+				if(prevMarcoMSS != null) {
+					//calculer la distance 
+					int d = distance(newMSS,prevMarcoMSS);
+					if(answer == Answer.YES ) {
+						distances.add("+ " + d);
+					}else distances.add("- " + d);
+				}else {
+					prevMarcoMSS = newMSS;  
+				}
 				asked.add(membership_query);
 				assert !asked_debug.contains(membership_query.toString());
 				asked_debug.add(membership_query.toString());
@@ -803,9 +867,15 @@ public class ACQ_CONACQ {
 					for (ACQ_IConstraint c : kappa) {
 						Unit unit = mapping.get(c).clone();
 						unit.setNeg();
-						T.unitPropagate(unit, chrono);
+						T.unitPropagate(unit, chrono); //je rajoute les conj de neg
 					}
-					bias_minus.reduce(kappa);
+					bias_minus.reduce(kappa);   //j'enlève du biais toutes les contraintes qui violent la requete
+					this.listMS.add(bias_minus.network.toSmtlib());
+					chrono.stop("pos_queries");
+					chrono.start("pos_queries");
+					//chrono.stop("gen_all_queries");
+					//chrono.start("gen_all_queries");
+					//classificatrions.add("Yes");
 				}
 				else {
 					if (kappa.size() == 1) {
@@ -819,12 +889,13 @@ public class ACQ_CONACQ {
 						
 						// Remove negation
 						bias_minus.reduce(c.getNegation());
+						this.listMS.add(bias_minus.network.toSmtlib());
 						unit = mapping.get(c.getNegation()).clone();
 						unit.setNeg();
-						T.unitPropagate(unit, chrono);
-						
+						T.unitPropagate(unit, chrono);						
 					}
 					else {
+						this.listMS.add("-");
 						Clause disj = new Clause();
 						for (ACQ_IConstraint c: kappa) {
 							Unit unit = mapping.get(c).clone();
@@ -834,20 +905,50 @@ public class ACQ_CONACQ {
 						T.add(disj);
 						//T.unitPropagate(chrono);
 					}
+					//chrono.stop("gen_all_queries");
+					//chrono.start("gen_all_queries");
+					chrono.stop("neg_queries");
+					chrono.start("neg_queries");
+					//classificatrions.add("No");
 				}
 			}
+			prevMarcoMSS = newMSS;
+			
+			//stocker MG à chaque itération
+			ACQ_Network mg = new ACQ_Network(constraintFactory, bias.getVars());
+			for (Clause clause : T.getClauses()) {
+				if (clause.getSize() == 1) {
+					Unit unit = clause.get(0);
+					if (!unit.isNeg()) {
+						mg.add(unit.getConstraint(), true);
+					}
+				}
+			}
+			if(!mg.isEmpty()) this.listMG.add(mg.toSmtlib());
+			else this.listMG.add("-");
 		}
 		chrono.stop("total_acq_time");
 		if (this.timeouted) {
 			if (verbose) System.out.println("[WARNING] Timeouted");
-			/*if (verbose) System.out.print("[INFO] Extract network from T: ");
-			learned_network = new ACQ_Network(constraintFactory, bias.getVars());
-			for (ACQ_IConstraint constr: bias_minus.getConstraints()) {
-				if (!isUnset(constr, T, N)) {
-					learned_network.add(constr, true);
+			
+			// Underapprox
+			ACQ_Network underapprox = new ACQ_Network(constraintFactory, bias.getVars());
+			for (ACQ_IConstraint c : bias_minus.getConstraints()) {
+				underapprox.add(c, true);
+			}
+			learned_underapprox_network = underapprox;
+
+			// Overapprox
+			ACQ_Network overapprox = new ACQ_Network(constraintFactory, bias.getVars());
+			for (ACQ_IConstraint c : bias_minus.getConstraints()) {
+				Unit unit = mapping.get(c).clone();
+				Clause unary = new Clause(unit);
+				if (T.contains(unary)) {
+					overapprox.add(c, true);
 				}
 			}
-			if (verbose) System.out.println("Done");*/
+			learned_overapprox_network = overapprox;
+
 		}
 		else if (!collapse) {
 			if (verbose) System.out.print("[INFO] Extract network from T: ");
@@ -861,14 +962,45 @@ public class ACQ_CONACQ {
 			
 			T = F;
 			
-			SATModel model = satSolver.solve(F);
+			SATModel model = satSolver.solve(toFormula(F));
 			if (verbose) System.out.println("Done");
 			learned_network = model != null ? toNetwork(model) : null;
+			learned_underapprox_network = learned_network;
+
+			// Overapprox
+			/*ACQ_Network overapprox = new ACQ_Network(constraintFactory, bias.getVars());
+			for (ACQ_IConstraint c : bias.getConstraints()) {
+				Unit unit = mapping.get(c).clone();
+				Clause unary = new Clause(unit);
+				if (T.contains(unary)) {
+					overapprox.add(c, true);
+				}
+			}
+			learned_overapprox_network = overapprox;*/
 		}
 
 		return !collapse;
 	}
 	
+	public ArrayList<String> getDistances(){
+		return this.distances;
+	}
+	
+	public ArrayList<String> getListMS(){
+		return this.listMS;
+	}
+	
+	public ArrayList<String> getListMG(){
+		return this.listMG;
+	}
+	
+	public Formula toFormula(CNF M) {
+		Formula res = new Formula();
+		for(Clause clause : M) {
+			res.addClause(clause);
+		}
+		return res;
+	}
 	protected ACQ_Network toNetwork(SATModel model) throws Exception {
 		chrono.start("to_network");
 		assert(model != null);
@@ -896,6 +1028,15 @@ public class ACQ_CONACQ {
 					break;
 				case UINT:
 					type = "uint";
+					break;
+				case UINT8:
+					type = "uint8";
+					break;
+				case UINT16:
+					type = "uint16";
+					break;
+				case BOOL:
+					type = "bool";
 					break;
 				case PTR:
 					type = "void*";

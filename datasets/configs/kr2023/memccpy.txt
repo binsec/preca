@@ -2,6 +2,7 @@
 nargs: 4
 types: PTR, PTR, INT, UINT
 globals: false, false, false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/memccpy

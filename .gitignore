@@ -10,3 +10,5 @@ bin
 binsecplugin/concrete/binsec
 binsecplugin/concrete/_build
 _opam
+.idea/
+venv/

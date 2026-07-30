@@ -1,24 +1,24 @@
-############################################################################
-#  This file is part of PRECA.                                             #
-#  PRECA is part of the BINSEC toolbox for binary-level program analysis.  #
-#                                                                          #
-#  Copyright (C) 2019-2023                                                 #
-#    CEA (Commissariat à l'énergie atomique et aux énergies                #
-#         alternatives)                                                    #
-#                                                                          #
-#  you can redistribute it and/or modify it under the terms of the GNU     #
-#  Lesser General Public License as published by the Free Software         #
-#  Foundation, version 2.1.                                                #
-#                                                                          #
-#  It is distributed in the hope that it will be useful,                   #
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of          #
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           #
-#  GNU Lesser General Public License for more details.                     #
-#                                                                          #
-#  See the GNU Lesser General Public License version 2.1                   #
-#  for more details (enclosed in the file licenses/LGPLv2.1).              #
-#                                                                          #
-############################################################################
+##############################################################################
+#  This file is part of PRECA.                                               #
+#  PRECA is part of the BINSEC toolbox for binary-level program analysis.    #
+#                                                                            #
+#  Copyright (C) 2019-2026                                                   #
+#  CEA (Commissariat à l'énergie atomique et aux énergies                    #
+#       alternatives)                                                        #
+#                                                                            #
+#  you can redistribute it and/or modify it under the terms of the GNU       #
+#  Lesser General Public License as published by the Free Software           #
+#  Foundation, version 2.1.                                                  #
+#                                                                            #
+#  It is distributed in the hope that it will be useful,                     #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+#  GNU Lesser General Public License for more details.                       #
+#                                                                            #
+#  See the GNU Lesser General Public License version 2.1                     #
+#  for more details (enclosed in the file licenses/LGPLv2.1).                #
+#                                                                            #
+##############################################################################
 
 from plumbum import local, ProcessExecutionError
 from z3 import BitVec, sat, unsat, unknown, Solver
@@ -46,10 +46,16 @@ def parse_results(results):
 def check(smtlib, datasetsmtlib, nargs, types, scopes, tocheck="equiv", size=32):
     smtstr =  """\
 (set-option :print-success false)
+(declare-fun mem () (Array (_ BitVec 32) (_ BitVec 8)))
 (declare-fun mem () (Array (_ BitVec 32) (_ BitVec 32)))
 (declare-datatype OptBitVec ((none) (some (value (_ BitVec 32)))))
+
 (declare-datatype PtrCell ((tup (ref (OptBitVec)) (value (_ BitVec 32)) (strlen (_ BitVec 32)))))
-(declare-datatype IntCell ((tup (ref (OptBitVec)) (value (_ BitVec 32)))))
+(declare-datatype IntCell32 ((tup (ref (OptBitVec)) (value (_ BitVec 32)))))
+(declare-datatype IntCell16 ((tup (ref (OptBitVec)) (value (_ BitVec 16)))))
+(declare-datatype IntCell8 ((tup (ref (OptBitVec)) (value (_ BitVec 8)))))
+(declare-datatype IntCellBool ((tup (ref (OptBitVec)) (value (_ Bool)))))
+
 
 ; Define constraints
 (define-fun valid ((x PtrCell)) (Bool) (distinct (value x)  #x00000000))
@@ -63,28 +69,72 @@ def check(smtlib, datasetsmtlib, nargs, types, scopes, tocheck="equiv", size=32)
             (bvugt (bvadd (value x) (bvadd #x00000001 (strlen x))) (value y))) 
         (and (bvule (value y) (value x)) 
             (bvugt (bvadd (value y) (bvadd #x00000001 (strlen y))) (value x)))))
+            
+(define-fun strlensgt ((x PtrCell) (y IntCell32)) (Bool) (bvsgt (strlen x)  (value y)))
+(define-fun strlenugt ((x PtrCell) (y IntCell32)) (Bool) (bvugt (strlen x)  (value y)))
+(define-fun ptrstrlengt ((x PtrCell) (y PtrCell)) (Bool) (bvugt (value x)  (strlen y)))
+(define-fun ptrsltint ((x PtrCell) (y IntCell32)) (Bool) (bvslt (value x)  (value y)))
+(define-fun ptrultint ((x PtrCell) (y IntCell32)) (Bool) (bvult (value x)  (value y)))
+(define-fun ptrsgtint ((x PtrCell) (y IntCell32)) (Bool) (bvsgt (value x)  (value y)))
+(define-fun ptrugtint ((x PtrCell) (y IntCell32)) (Bool) (bvugt (value x)  (value y)))
 
-(define-fun eq ((x IntCell) (y (_ BitVec 32))) (Bool) (= (value x) y))
-(define-fun eq ((x IntCell) (y IntCell)) (Bool) (= (value x) (value y)))
+(define-fun eq ((x IntCell32) (y (_ BitVec 32))) (Bool) (= (value x) y))
+(define-fun eq ((x IntCell32) (y IntCell32)) (Bool) (= (value x) (value y)))
 
-(define-fun sgt ((x IntCell) (y (_ BitVec 32))) (Bool) (bvsgt (value x) y))
-(define-fun ugt ((x IntCell) (y (_ BitVec 32))) (Bool) (bvugt (value x) y))
+(define-fun eq ((x IntCell16) (y (_ BitVec 16))) (Bool) (= (value x) y))
+(define-fun eq ((x IntCell16) (y IntCell16)) (Bool) (= (value x) (value y)))
 
-(define-fun sgt ((x IntCell) (y IntCell)) (Bool) (bvsgt (value x) (value y)))
-(define-fun ugt ((x IntCell) (y IntCell)) (Bool) (bvugt (value x) (value y)))
+(define-fun eq ((x IntCell8) (y (_ BitVec 8))) (Bool) (= (value x) y))
+(define-fun eq ((x IntCell8) (y IntCell8)) (Bool) (= (value x) (value y)))
 
-(define-fun slt ((x IntCell) (y (_ BitVec 32))) (Bool) (bvslt (value x) y))
-(define-fun ult ((x IntCell) (y (_ BitVec 32))) (Bool) (bvult (value x) y))
+(define-fun eq ((x PtrCell) (y (_ BitVec 32))) (Bool) (= (value x) y))
+(define-fun eq ((x PtrCell) (y PtrCell)) (Bool) (= (value x) (value y)))
+    
+(define-fun sgt ((x IntCell32) (y (_ BitVec 32))) (Bool) (bvsgt (value x) y))
+(define-fun ugt ((x IntCell32) (y (_ BitVec 32))) (Bool) (bvugt (value x) y))
+(define-fun ugt ((x IntCell16) (y (_ BitVec 16))) (Bool) (bvugt (value x) y))
+(define-fun ugt ((x IntCell8) (y (_ BitVec 8))) (Bool) (bvugt (value x) y))
 
-(define-fun slt ((x IntCell) (y IntCell)) (Bool) (bvslt (value x) (value y)))
-(define-fun ult ((x IntCell) (y IntCell)) (Bool) (bvult (value x) (value y)))
 
-(define-fun smod ((x IntCell) (y (_ BitVec 32)) (z (_ BitVec 32))) (Bool) (= (bvsrem (value x) y) z))
-(define-fun umod ((x IntCell) (y (_ BitVec 32)) (z (_ BitVec 32))) (Bool) (= (bvurem (value x) y) z))
+(define-fun sgt ((x IntCell32) (y IntCell32)) (Bool) (bvsgt (value x) (value y)))
+(define-fun ugt ((x IntCell32) (y IntCell32)) (Bool) (bvugt (value x) (value y)))
+
+(define-fun sgt ((x IntCell16) (y IntCell16)) (Bool) (bvsgt (value x) (value y)))
+(define-fun ugt ((x IntCell16) (y IntCell16)) (Bool) (bvugt (value x) (value y)))
+
+
+(define-fun sgt ((x IntCell8) (y IntCell8)) (Bool) (bvsgt (value x) (value y)))
+(define-fun ugt ((x IntCell8) (y IntCell8)) (Bool) (bvugt (value x) (value y)))
+
+
+(define-fun slt ((x IntCell32) (y (_ BitVec 32))) (Bool) (bvslt (value x) y))
+(define-fun slt ((x IntCell16) (y (_ BitVec 16))) (Bool) (bvslt (value x) y))
+(define-fun slt ((x IntCell8) (y (_ BitVec 8))) (Bool) (bvslt (value x) y))
+
+(define-fun ult ((x IntCell32) (y (_ BitVec 32))) (Bool) (bvult (value x) y))
+(define-fun ult ((x IntCell16) (y (_ BitVec 16))) (Bool) (bvult (value x) y))
+(define-fun ult ((x IntCell8) (y (_ BitVec 8))) (Bool) (bvult (value x) y))
+
+
+(define-fun slt ((x IntCell32) (y IntCell32)) (Bool) (bvslt (value x) (value y)))
+(define-fun ult ((x IntCell32) (y IntCell32)) (Bool) (bvult (value x) (value y)))
+
+(define-fun slt ((x IntCell16) (y IntCell16)) (Bool) (bvslt (value x) (value y)))
+(define-fun ult ((x IntCell16) (y IntCell16)) (Bool) (bvult (value x) (value y)))
+
+(define-fun slt ((x IntCell8) (y IntCell8)) (Bool) (bvslt (value x) (value y)))
+(define-fun ult ((x IntCell8) (y IntCell8)) (Bool) (bvult (value x) (value y)))
+
+
+(define-fun smod ((x IntCell32) (y (_ BitVec 32)) (z (_ BitVec 32))) (Bool) (= (bvsrem (value x) y) z))
+(define-fun umod ((x IntCell32) (y (_ BitVec 32)) (z (_ BitVec 32))) (Bool) (= (bvurem (value x) y) z))
+(define-fun umod ((x IntCell16) (y (_ BitVec 16)) (z (_ BitVec 16))) (Bool) (= (bvurem (value x) y) z))
+(define-fun umod ((x IntCell8) (y (_ BitVec 8)) (z (_ BitVec 8))) (Bool) (= (bvurem (value x) y) z))
+
 
 ; Define the uniterpreted function sum
 (declare-fun sum 
-        ((Array (_ BitVec 32) (_ BitVec 32)) (_ BitVec 32) IntCell)
+        ((Array (_ BitVec 32) (_ BitVec 32)) (_ BitVec 32) IntCell32)
         (_ BitVec 32))
 
 ; Define the uniterpreted function for unknown constraint
@@ -98,7 +148,11 @@ def check(smtlib, datasetsmtlib, nargs, types, scopes, tocheck="equiv", size=32)
             smtstr += "(assert (=> (not (valid v{0})) (= (strlen v{0}) #x00000000)))\n".format(i)
             smtstr += "(assert (bvult (value v{0}) (bvadd #x00000001 (bvadd (value v{0}) (strlen v{0})))))\n".format(i)
         elif types[i] in { "INT", "UINT" }:
-            smtstr += "\n(declare-fun v{} () IntCell)\n".format(i)
+            smtstr += "\n(declare-fun v{} () IntCell32)\n".format(i)
+        elif types[i] in { "UINT8","UINT16" }:
+            smtstr += "\n(declare-fun v{} () IntCell{})\n".format(i, types[i].split("INT")[1])
+        elif types[i]=="BOOL":
+            smtstr += "\n(declare-fun v{} () IntCellBool)\n".format(i)
         else:
             assert False
 
@@ -110,7 +164,12 @@ def check(smtlib, datasetsmtlib, nargs, types, scopes, tocheck="equiv", size=32)
             # Global variables have reference addresses
             smtstr += "(assert ((_ is (some ((_ BitVec 32)) (OptBitVec))) (ref v{})))\n".format(i)
             smtstr += "(assert (distinct (value (ref v{})) #x00000000))\n".format(i)
-            smtstr += "(assert (= (select mem (value (ref v{0}))) (value v{0})))\n".format(i)
+            if types[i] =="UINT8":
+                smtstr += "(assert (= (select mem (value (ref v{0}))) (value v{0})))\n".format(i)
+            elif types[i] in {"UINT16"}:
+                smtstr += "(assert (= (concat (select mem (value (ref v{0}))) (select mem (bvadd (value (ref v{0})) #x00000001))) (value v{0})))\n".format(i)
+            elif types[i] in {"INT","UINT"}:
+                smtstr += "(assert (= (concat (select mem (value (ref v{0}))) (select mem (bvadd (value (ref v{0})) #x00000001)) (select mem (value(bvadd (ref v{0} #x00000002)))) (select mem (value(bvadd (ref v{0} #x00000003)))) ) (value v{0})))\n".format(i)
 
     smtstr += "\n"
 
@@ -169,10 +228,17 @@ def getMaxClauseSize(network):
         res = max(res, 1+line.count("_or_"))
     return res
 
+def getNetworkSize(network):
+    size = 0
+    for line in network.split("\n"):
+        if line.strip():
+            size += 1
+    return size
+
 def getDisjSet(cst_expr):
     res = set()
     for constr in cst_expr:
-        res.add(1+constr.count("\/"))
+        res.add(1+constr.count("\\/"))
 
     res = res.difference(set([1]))
     res = res if len(res) > 0 else 1
@@ -181,7 +247,9 @@ def getDisjSet(cst_expr):
 def bench(conffiles, timeout, conacq_args, outfile, passive, nruns, biaslevel, ijcai22):
     global RESULTS, OUT
     disj = conacq_args["disj"]
+    method = conacq_args["method"]
     strat = conacq_args["strat"]
+    MSes = conacq_args["MSes"]
     back = conacq_args["back"]
     emulto = conacq_args["emulto"]
 
@@ -195,25 +263,26 @@ def bench(conffiles, timeout, conacq_args, outfile, passive, nruns, biaslevel, i
         nargs = parsed["nargs"]
         scopes = parsed["globals"]
         types = parsed["types"]
-
         retcode, res, stderr = conacq["-file", conffile,
             "-disj", getDisjSet(cst_expr) if disj == "optim" else disj,
+            "-method", method,
             "-emulto", emulto,
             "-strat" if strat else None,
+            "-MSes" if MSes else None,
             "-back" if back else None,
             "-passive" if passive else None,
             ("-timeout", timeout) if timeout != None else None,
             "-biaslvl", biaslevel,
             "-ijcai22" if ijcai22 else None,
         ].run(retcode=(0, 1, 124))
-
+        print(conffile)
         if retcode == 1:
             print(stderr)
             parsed = {}
             parsed["conffile"] = conffile
             parsed["timeouted"] = "no"
             parsed["timeout"] = timeout
-            parsed["network"] = None
+            parsed["network_MS"] = None
             parsed["error"] = "yes"
             parsed["collapse"] = "no"
 
@@ -222,13 +291,13 @@ def bench(conffiles, timeout, conacq_args, outfile, passive, nruns, biaslevel, i
             parsed["conffile"] = conffile
             parsed["timeouted"] = "yes"
             parsed["timeout"] = timeout
-            parsed["network"] = None
+            parsed["network_MS"] = None
             parsed["collapse"] = "no"
-
+    
         else: 
             parsed = parse_results(res)
 
-            if parsed["network"] == None:
+            if parsed["network_MS"] == None:
                 parsed["conffile"] = conffile
                 parsed["collapse"] = "yes" if parsed["timeouted"] == "no" else "no"
                 parsed["timeout"] = timeout
@@ -238,23 +307,26 @@ def bench(conffiles, timeout, conacq_args, outfile, passive, nruns, biaslevel, i
                 parsed["target"] = smtlibexpr
                 parsed["collapse"] = "no"
                 
-                parsed["equiv"] = check(parsed["smtlib"], smtlibexpr, nargs, types, scopes)
+                parsed["equiv"] = check(parsed["smtlib_MS"], smtlibexpr, nargs, types, scopes)
+                if parsed.get('network_not_simpl_MS') != None : 
+                    equivnotsimpl = check(parsed["smtlib_not_simpl_MS"], smtlibexpr, nargs, types, scopes)
+                    if parsed["equiv"] != equivnotsimpl: 
+                        print("[ERROR] simplification changed semantics from {} to {}".format(equivnotsimpl, parsed["equiv"]))
 
-                equivnotsimpl = check(parsed["smtlib_not_simpl"], smtlibexpr, nargs, types, scopes)
-                if parsed["equiv"] != equivnotsimpl: 
-                    print("[ERROR] simplification changed semantics from {} to {}".format(equivnotsimpl, parsed["equiv"]))
 
-                parsed["isfalse"] = check(parsed["smtlib"], "false", nargs, types, scopes)
+                parsed["isfalse"] = check(parsed["smtlib_MS"], "false", nargs, types, scopes)
 
                 if parsed["equiv"] == "yes":
                     parsed["implies"] = "yes"
                 else:
-                    parsed["implies"] = check(parsed["smtlib"], smtlibexpr, nargs, types, scopes, "implies")
+                    parsed["implies"] = check(parsed["smtlib_MS"], smtlibexpr, nargs, types, scopes, "implies")
 
-                if parsed["timeouted"] == "no" and not parsed["equiv"]:
+                if parsed["timeouted"] == "no" and parsed["equiv"] != "yes":
                     print("[ERROR] Inferred precondition for {} is not equivalent to ground truth".format(conffile), file=sys.stderr)
 
-                parsed["clause_size"] = getMaxClauseSize(parsed["network"])
+                parsed["clause_size"] = getMaxClauseSize(parsed["network_MS"])
+                parsed["network_size"] = getNetworkSize(parsed["network_MS"])  
+
 
         RESULTS[str(j)] = parsed
         json.dump(RESULTS, open(OUT, "w"), indent=4, sort_keys=True) 
@@ -264,12 +336,15 @@ def bench(conffiles, timeout, conacq_args, outfile, passive, nruns, biaslevel, i
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', required=True, type=str, help="dataset of expressions (directory)")
-    parser.add_argument('--timeout', required=False, type=int, help="timeout for each exec in second")
+    parser.add_argument('--timeout', required=False, type=int, help="timeout for each exec without simplification in second")
     parser.add_argument('--emulto', required=True, type=int, help="timeout for queries in second")
     parser.add_argument('--nruns', required=False, type=int, help="number of time to run (default = 1)")
     parser.add_argument('--disj', required=False, type=str, help="Add disjunction constraints")
+    parser.add_argument('--method', required=False, type=str, help="Apply method")
     parser.add_argument('--strat', action="store_true", help="Add query generation strategy")
+    parser.add_argument('--MSes', action="store_true", help="Stock MSes")
     parser.add_argument('--back', action="store_true", help="Add background knowledge")
+    parser.add_argument('--firstQuery', action="store_true", help="use first query")
     parser.add_argument('--biaslvl', type=str, help="Set bias size (min, avg, max)")
     parser.add_argument('--passive', action="store_true", help="Run in passive mode")
     parser.add_argument('--ijcai22', action="store_true", help="Limit to the set of constraint from the IJCAI'22 paper")
@@ -281,7 +356,9 @@ if __name__ == "__main__":
 
     conacq_args = {
         "disj" : args.disj if args.disj != None else "auto",
+        "method" : args.method if args.method != None else "conacq",
         "strat" : args.strat,
+        "MSes" : args.MSes,
         "back" : args.back,
         "emulto": args.emulto,
     }

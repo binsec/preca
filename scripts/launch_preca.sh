@@ -23,7 +23,9 @@
 
 FILE=""
 DISJ="auto"
+METHOD="conacq"
 STRAT=false
+MSes=false
 BACK=false
 TIMEOUT="3600"
 EMULTO="5"
@@ -46,6 +48,11 @@ while [[ $# -gt 0 ]]; do
         shift # past argument
         shift # past value
         ;;
+        -method)
+        METHOD="$2"
+        shift # past argument
+        shift # past value
+        ;;
         -emulto)
         EMULTO="$2"
         shift # past argument
@@ -55,7 +62,11 @@ while [[ $# -gt 0 ]]; do
         STRAT=true
         shift # past argument
         ;;
-        -back)
+	-MSes)
+	MSes=true
+	shift #past argument
+	;;
+	-back)
         BACK=true
         shift # past argument
         ;;
@@ -87,13 +98,18 @@ set -- "${POSITIONAL[@]}" # restore positional parameters
 
 STR=$(cat $FILE)
 
+#conf="""\
+#${STR//bias:/\#bias:}
+#$(python3 ./scripts/get_bias.py --file $FILE --lvl $BIASLEVEL $IJCAI22)
+
 conf="""\
-${STR//bias:/\#bias:}
-$(python3 ./scripts/get_bias.py --file $FILE --lvl $BIASLEVEL $IJCAI22)
+${STR}
 
 active: $ACTIVE 
 disj: $DISJ
+method: $METHOD
 strat: $STRAT
+MSes: $MSes
 back: $BACK
 verbose: false
 json: true
@@ -105,7 +121,7 @@ simplify: false"""
 conffilename="/tmp/$(basename $FILE).$(date +"%H-%M-%S-%N")"
 echo "$conf" > $conffilename
 
-timeout $(($TIMEOUT * 2)) java -ea -jar ./preca.jar -file $conffilename
+timeout $(($TIMEOUT * 12)) java -ea -jar ./preca.jar -file $conffilename
 
 res=$?
 

@@ -8,7 +8,7 @@ homepage: "https://binsec.github.io"
 bug-reports: "mailto:binsec@saxifrage.saclay.cea.fr"
 depends: [
   "dune" {>= "3.0"}
-  "binsec" {>= "0.8.1"}
+  "binsec" {= "0.10.1"}
   "unisim_archisec"
   "odoc" {with-doc}
 ]

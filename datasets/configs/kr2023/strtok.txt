@@ -2,6 +2,7 @@
 nargs: 3
 types: PTR, PTR, PTR
 globals: false, false, true
+arch : X86-64
 addr_globals: 0x404030
 
 # Emulator Options

@@ -1,28 +1,31 @@
-/****************************************************************************/
-/*  This file is part of PRECA.                                             */
-/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.  */
-/*                                                                          */
-/*  Copyright (C) 2019-2023                                                 */
-/*    CEA (Commissariat à l'énergie atomique et aux énergies                */
-/*         alternatives)                                                    */
-/*                                                                          */
-/*  you can redistribute it and/or modify it under the terms of the GNU     */
-/*  Lesser General Public License as published by the Free Software         */
-/*  Foundation, version 2.1.                                                */
-/*                                                                          */
-/*  It is distributed in the hope that it will be useful,                   */
-/*  but WITHOUT ANY WARRANTY; without even the implied warranty of          */
-/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           */
-/*  GNU Lesser General Public License for more details.                     */
-/*                                                                          */
-/*  See the GNU Lesser General Public License version 2.1                   */
-/*  for more details (enclosed in the file licenses/LGPLv2.1).              */
-/*                                                                          */
-/****************************************************************************/
+/******************************************************************************/
+/*  This file is part of PRECA.                                               */
+/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.    */
+/*                                                                            */
+/*  Copyright (C) 2019-2026                                                   */
+/*  CEA (Commissariat à l'énergie atomique et aux énergies                    */
+/*       alternatives)                                                        */
+/*                                                                            */
+/*  you can redistribute it and/or modify it under the terms of the GNU       */
+/*  Lesser General Public License as published by the Free Software           */
+/*  Foundation, version 2.1.                                                  */
+/*                                                                            */
+/*  It is distributed in the hope that it will be useful,                     */
+/*  but WITHOUT ANY WARRANTY; without even the implied warranty of            */
+/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
+/*  GNU Lesser General Public License for more details.                       */
+/*                                                                            */
+/*  See the GNU Lesser General Public License version 2.1                     */
+/*  for more details (enclosed in the file licenses/LGPLv2.1).                */
+/*                                                                            */
+/******************************************************************************/
 
 package io.github.binsec.core.acqsolver;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.sat4j.core.VecInt;
 import org.sat4j.pb.IPBSolver;
@@ -31,17 +34,20 @@ import org.sat4j.specs.ContradictionException;
 import org.sat4j.specs.IProblem;
 import org.sat4j.specs.ISolver;
 import org.sat4j.specs.TimeoutException;
+import org.sat4j.maxsat.WeightedMaxSatDecorator;
 
-import io.github.binsec.core.acqconstraint.ACQ_IConstraint;
+
+import constracq.core.acqconstraint.ACQ_IConstraint;
+import constracq.core.acqconstraint.ACQ_Network;
 import io.github.binsec.core.acqconstraint.CNF;
 import io.github.binsec.core.acqconstraint.Clause;
+import io.github.binsec.core.acqconstraint.ConstraintMapping;
 import io.github.binsec.core.acqconstraint.Formula;
 import io.github.binsec.core.acqconstraint.RevConstraintMapping;
 import io.github.binsec.core.acqconstraint.Unit;
 
 public class MiniSatSolver extends SATSolver {
 
-	
 	RevConstraintMapping revmapping;
 	int timeout;
 	int nvars = 0;
@@ -113,7 +119,6 @@ public class MiniSatSolver extends SATSolver {
 		fireSolverEvent("BEG_satsolve", false, true);
 		
 		IPBSolver solv = SolverFactory.newDefault();
-		
 		solv.setTimeout(this.timeout);
 		
 		SATModel res = null;
@@ -134,7 +139,7 @@ public class MiniSatSolver extends SATSolver {
 			fireSolverEvent("BEG_TIMECOUNT", false, true);
 			boolean sat = problem.isSatisfiable();
 			fireSolverEvent("END_TIMECOUNT", true, false);
-			if (sat) {
+			if (sat) {	
 				ArrayList<Integer> model = convert(problem.model());
 				res = new MiniSatModel(model, revmapping);
 			}
@@ -146,6 +151,12 @@ public class MiniSatSolver extends SATSolver {
 		
 		fireSolverEvent("END_satsolve", true, false);
 		return res;
+	}
+	
+	@Override
+	public SATModel maxsat(Formula Fhard, Formula Fsoft, Formula Fsofter) {
+	    assert false;
+	    return null;
 	}
 	
 	protected ArrayList<Integer> convert(int[] l) {
@@ -186,5 +197,47 @@ public class MiniSatSolver extends SATSolver {
 		nvars = 0;
 		timeoutReached = false;
 	}
+
+	//test for maxsat using satsolver 
+	@Override
+	public SATModel solveMaxSat(Formula H, Formula S,ACQ_Network m,ConstraintMapping mapping) {
+
+	    fireSolverEvent("BEG_maxsatsolve", false, true);
+
+	    SATModel res = null;
+	    Formula F = new Formula();
+	    for (CNF T : H.getCnfs()) {
+            F.addCnf(T);
+        }
+	    Clause cl = new Clause();
+	    for(ACQ_IConstraint c : m.getConstraints()) {
+        	Unit intC = mapping.get(c);
+        	cl.add(intC);        	
+        }
+	    
+        for(int i=m.size()-1; i>=0 ;i--) {
+        	F.setAtLeastAtMost(cl, i, m.size());
+        	SATModel model = solve(F);
+        	if(model!= null) {
+        		res = model;
+        		break;
+        	}
+        }
+        fireSolverEvent("END_maxsatsolve", true, false);
+        return res;	    
+	}
+
+	@Override
+	public SATModel solveConacq(Formula F) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public SATModel maxsat(Formula Fhard, Formula Fsoft) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
 	
 }

@@ -1,24 +1,24 @@
-/****************************************************************************/
-/*  This file is part of PRECA.                                             */
-/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.  */
-/*                                                                          */
-/*  Copyright (C) 2019-2023                                                 */
-/*    CEA (Commissariat à l'énergie atomique et aux énergies                */
-/*         alternatives)                                                    */
-/*                                                                          */
-/*  you can redistribute it and/or modify it under the terms of the GNU     */
-/*  Lesser General Public License as published by the Free Software         */
-/*  Foundation, version 2.1.                                                */
-/*                                                                          */
-/*  It is distributed in the hope that it will be useful,                   */
-/*  but WITHOUT ANY WARRANTY; without even the implied warranty of          */
-/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           */
-/*  GNU Lesser General Public License for more details.                     */
-/*                                                                          */
-/*  See the GNU Lesser General Public License version 2.1                   */
-/*  for more details (enclosed in the file licenses/LGPLv2.1).              */
-/*                                                                          */
-/****************************************************************************/
+/******************************************************************************/
+/*  This file is part of PRECA.                                               */
+/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.    */
+/*                                                                            */
+/*  Copyright (C) 2019-2026                                                   */
+/*  CEA (Commissariat à l'énergie atomique et aux énergies                    */
+/*       alternatives)                                                        */
+/*                                                                            */
+/*  you can redistribute it and/or modify it under the terms of the GNU       */
+/*  Lesser General Public License as published by the Free Software           */
+/*  Foundation, version 2.1.                                                  */
+/*                                                                            */
+/*  It is distributed in the hope that it will be useful,                     */
+/*  but WITHOUT ANY WARRANTY; without even the implied warranty of            */
+/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
+/*  GNU Lesser General Public License for more details.                       */
+/*                                                                            */
+/*  See the GNU Lesser General Public License version 2.1                     */
+/*  for more details (enclosed in the file licenses/LGPLv2.1).                */
+/*                                                                            */
+/******************************************************************************/
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -46,19 +46,30 @@ import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
+import constracq.core.acqconstraint.ACQ_ConjunctionConstraint;
+import constracq.core.acqconstraint.ACQ_DisjunctionConstraint;
+import constracq.core.acqconstraint.ACQ_IConstraint;
+import constracq.core.acqconstraint.ACQ_Network;
+import constracq.core.acqconstraint.BinaryArithmetic;
+import constracq.core.acqconstraint.ConstraintFactory;
+import constracq.core.acqconstraint.Operator;
+import constracq.core.acqconstraint.ScalarArithmetic;
+import constracq.core.acqconstraint.ConstraintFactory.ConstraintSet;
+import constracq.core.acqsolver.ACQ_ConstraintSolver;
+import constracq.core.combinatorial.AllPermutationIterator;
+import constracq.core.combinatorial.CombinationIterator;
+import constracq.core.learner.ACQ_Bias;
+import constracq.core.learner.ACQ_Learner;
+import constracq.core.learner.ACQ_Query;
+import constracq.core.learner.ACQ_Scope;
 import io.github.binsec.core.ACQ_Utils;
-import io.github.binsec.core.DefaultExperience;
-import io.github.binsec.core.acqconstraint.ACQ_ConjunctionConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_DisjunctionConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_IConstraint;
-import io.github.binsec.core.acqconstraint.ACQ_Network;
+import io.github.binsec.core.DefaultExperiment;
 import io.github.binsec.core.acqconstraint.AliasConstraint;
-import io.github.binsec.core.acqconstraint.BinaryArithmetic;
-import io.github.binsec.core.acqconstraint.ConstraintFactory;
 import io.github.binsec.core.acqconstraint.ConstraintMapping;
 import io.github.binsec.core.acqconstraint.Contradiction;
 import io.github.binsec.core.acqconstraint.ContradictionSet;
 import io.github.binsec.core.acqconstraint.DerefConstraint;
+import io.github.binsec.core.acqconstraint.FalseConstraint;
 import io.github.binsec.core.acqconstraint.IntCellBinaryEqConstraint;
 import io.github.binsec.core.acqconstraint.IntCellBinaryGTConstraint;
 import io.github.binsec.core.acqconstraint.IntCellBinaryLTConstraint;
@@ -66,27 +77,18 @@ import io.github.binsec.core.acqconstraint.IntCellUnaryEqConstraint;
 import io.github.binsec.core.acqconstraint.IntCellUnaryGTConstraint;
 import io.github.binsec.core.acqconstraint.IntCellUnaryLTConstraint;
 import io.github.binsec.core.acqconstraint.IntCellUnaryModConstraint;
-import io.github.binsec.core.acqconstraint.Operator;
 import io.github.binsec.core.acqconstraint.OverlapConstraint;
 import io.github.binsec.core.acqconstraint.PtrCellBinaryGTConstraint;
 import io.github.binsec.core.acqconstraint.PtrCellBinaryLTConstraint;
-import io.github.binsec.core.acqconstraint.ScalarArithmetic;
 import io.github.binsec.core.acqconstraint.StrlenEqConstraint;
 import io.github.binsec.core.acqconstraint.ValidConstraint;
-import io.github.binsec.core.acqconstraint.ConstraintFactory.ConstraintSet;
 import io.github.binsec.core.acqsolver.ACQ_ChocoSolverCells;
-import io.github.binsec.core.acqsolver.ACQ_ConstraintSolver;
 import io.github.binsec.core.acqsolver.MiniSatSolver;
 import io.github.binsec.core.acqsolver.NaPSSolver;
 import io.github.binsec.core.acqsolver.SATSolver;
+import io.github.binsec.core.acqsolver.Sat4jMaxSATSolver;
 import io.github.binsec.core.acqvariable.ACQ_CellVariable;
 import io.github.binsec.core.acqvariable.CellType;
-import io.github.binsec.core.combinatorial.AllPermutationIterator;
-import io.github.binsec.core.combinatorial.CombinationIterator;
-import io.github.binsec.core.learner.ACQ_Bias;
-import io.github.binsec.core.learner.ACQ_Learner;
-import io.github.binsec.core.learner.ACQ_Query;
-import io.github.binsec.core.learner.ACQ_Scope;
 import io.github.binsec.core.learner.Answer;
 import io.github.binsec.core.tools.Binsec;
 import io.github.binsec.core.tools.CellQueryPrinter;
@@ -94,16 +96,21 @@ import io.github.binsec.core.tools.MUSSimplifier;
 import io.github.binsec.core.tools.QueryPrinter;
 import io.github.binsec.core.tools.Simplifier;
 import io.github.binsec.core.tools.SolverSimplifier;
+import io.github.binsec.core.tools.ArchType;
+
 
 /**
  *
  * @author gregoire
  */
-public class PreCA extends DefaultExperience {
+public class PreCA extends DefaultExperiment {
 	static boolean parallel = true;
 	
 	static int nbvars;
 	static int nbacqvars = 0;
+
+
+	static ArchType arch;
 	
 	static CellType[] types;
 	static boolean[] globals;
@@ -114,12 +121,15 @@ public class PreCA extends DefaultExperience {
 	
 	static ArrayList<Integer> disj = new ArrayList<>();
 	static boolean autodisj = false;
-	static boolean mss = false;
-	
+	static boolean dca = false;
+	static boolean cany = false;
+	static boolean candy = false;
 	static boolean active = true;
 	static boolean strat = false;
+	static boolean mses = false;
 	static boolean backknow = false;
 	static boolean noprint = false;
+	static boolean remDisj = false;
 	
 	static String binaryconf = "";
 	static Long learningtimeout = null;
@@ -129,15 +139,15 @@ public class PreCA extends DefaultExperience {
 	static boolean simplify = true;
 	static ACQ_ConstraintSolver csolv;
 	static ACQ_Bias known;
-	
 	/*
 	 *  Variables to store if some kind of constraints are in the bias
 	 *  Used to add relevant known constraints
 	 */
 	static boolean overlapcstr = false;
 	static boolean derefcstr = false;
-	
+	static ACQ_Scope allVarSet;
 	static int[] constant_values = new int[]{0};
+
 	
 	static Binsec binsec;
 	
@@ -150,7 +160,9 @@ public class PreCA extends DefaultExperience {
 		}
 		
 		nbacqvars = getNbACQVars();
-		
+		BitSet bs = new BitSet();
+		bs.set(0, nbacqvars);
+		allVarSet = new ACQ_Scope(bs);
 		runtime = Runtime.getRuntime();
 		torun = String.format("%s/resources/exec_bin.py", System.getenv("PRECA_PATH"));
 	}
@@ -171,6 +183,11 @@ public class PreCA extends DefaultExperience {
 		}
 		return res;
 	}
+	public int getNbVars() {
+		return nbvars;
+	}
+	
+	
 	
 	public ACQ_ConstraintSolver createSolver() {
 		csolv = new ACQ_ChocoSolverCells(cells);
@@ -195,7 +212,7 @@ public class PreCA extends DefaultExperience {
 		return new ACQ_Learner() {
 			@Override
 			public Answer ask(ACQ_Query e) {
-				
+
 				Integer s[] = new Integer[nbacqvars];
 				
 				for (int numvar : e.getScope()) {
@@ -203,19 +220,20 @@ public class PreCA extends DefaultExperience {
 
 				}
 				
-				int res = binsec.call(s);
+				int res = binsec.call(s, e.toString2());
 				
 				if (res == 0) {
-					e.classify(true);
+					e.classify(Answer.YES);
 					return Answer.YES;
 				}
 				else if (res == 1) {
-					e.classify(false);
+					e.classify(Answer.NO);
 					return Answer.NO;
 				}
 				else if (res == 124) {
 					//e.classify(null);
-					assert false;
+					//assert false;
+					e.classify(Answer.UKN);
 					return Answer.UKN;
 				}
 				else {
@@ -234,6 +252,15 @@ public class PreCA extends DefaultExperience {
 				break;
 			case UINT:
 				type = "uint";
+				break;
+			case UINT8:
+				type = "uint8";
+				break;
+			case UINT16:
+				type = "uint16";
+				break;
+			case BOOL:
+				type = "bool";
 				break;
 			case PTR:
 				type = "void*";
@@ -330,18 +357,26 @@ public class PreCA extends DefaultExperience {
 							break;
 							
 						case "Eq":
-							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT) continue;
+							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT && cell.getType() != CellType.UINT8 && cell.getType() != CellType.UINT16) continue;
 							constval = Integer.parseInt(elems[2]); 
 							IntCellUnaryEqConstraint ic = weighted ?
 									new IntCellUnaryEqConstraint(cell, constval, 500) : new IntCellUnaryEqConstraint(cell, constval);
 							constraints.add(ic);
 							constraints.add(weighted ? ic.getNegation(1) : ic.getNegation());
 							break;
+						case "BoolEq":
+							if (cell.getType() != CellType.BOOL) continue;
+							constval = Integer.parseInt(elems[2]);
+							IntCellUnaryEqConstraint bc = weighted ?
+									new IntCellUnaryEqConstraint(cell, constval, 500) : new IntCellUnaryEqConstraint(cell, constval);
+							constraints.add(bc);
+							constraints.add(weighted ? bc.getNegation(1) : bc.getNegation());
+							break;
 							
 						case "LT":
-							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT) continue;
+							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT && cell.getType() != CellType.UINT8 && cell.getType() != CellType.UINT16) continue;
 							constval = Integer.parseInt(elems[2]);
-							if (cell.getType() == CellType.UINT && constval == 0) continue;
+							if ((cell.getType() == CellType.UINT || cell.getType() == CellType.UINT8 || cell.getType() == CellType.UINT16) && constval == 0) continue;
 							IntCellUnaryLTConstraint ic2 = weighted ? 
 									new IntCellUnaryLTConstraint(cell, constval, 500) : new IntCellUnaryLTConstraint(cell, constval);
 							constraints.add(ic2);
@@ -349,7 +384,7 @@ public class PreCA extends DefaultExperience {
 							break;
 							
 						case "GT":
-							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT) continue;
+							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT && cell.getType() != CellType.UINT8 && cell.getType() != CellType.UINT16) continue;
 							constval = Integer.parseInt(elems[2]);
 							//if (cell.getType() == CellType.UINT && constval == 0) continue;
 							IntCellUnaryGTConstraint ic3 = weighted ? 
@@ -359,7 +394,7 @@ public class PreCA extends DefaultExperience {
 							break;
 						
 						case "Mod":
-							if (cell.getType() != CellType.INT && cell.getType() != CellType.UINT) continue;
+							if (cell.getType() != CellType.UINT && cell.getType() != CellType.UINT8 && cell.getType() != CellType.UINT16) continue;
 							int mod = Integer.parseInt(elems[2]);
 							int res = Integer.parseInt(elems[3]);
 							IntCellUnaryModConstraint ic4 = weighted ?
@@ -367,6 +402,7 @@ public class PreCA extends DefaultExperience {
 							constraints.add(ic4);
 							constraints.add(weighted ? ic4.getNegation(500) : ic4.getNegation());
 							break;
+
 						default:
 							assert false: "Unknown constraint";
 					}
@@ -375,152 +411,239 @@ public class PreCA extends DefaultExperience {
 			else if (getNbVars(sconstr) == 2) {
 				if (cells.length < 2) continue;
 				// Constraint of arity 2
-				
+
 				Integer[] cellids = getCellIds(sconstr, 2);
 				Integer cellid1 = cellids[0];
 				Integer cellid2 = cellids[1];
-				
+
 				CombinationIterator iterator = new CombinationIterator(cells.length, 2);
 				while (iterator.hasNext()) {
 					int[] vars = iterator.next();
 					AllPermutationIterator pIterator = new AllPermutationIterator(2);
 					while (pIterator.hasNext()) {
 						int[] pos = pIterator.next();
-						
+
 						ACQ_CellVariable cell1 = cells[vars[pos[0]]];
 						ACQ_CellVariable cell2 = cells[vars[pos[1]]];
-						
+
 						if (cellid1 != null && cell1.cellid != cellid1) continue;
 						if (cellid2 != null && cell2.cellid != cellid2) continue;
-						
+
 						switch (elems[0]) {
-						case "Alias":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
-							AliasConstraint ac = weighted ? 
-									new AliasConstraint(cell1, cell2, 1) : new AliasConstraint(cell1, cell2);
-							constraints.add(ac);
-							constraints.add(weighted ? ac.getNegation(1000) : ac.getNegation());
-							break;
-						
-						case "PtrLT":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if(cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
-							PtrCellBinaryLTConstraint pc1 = new PtrCellBinaryLTConstraint(cell1, cell2);
-							constraints.add(pc1);
-							constraints.add(pc1.getNegation());
-							break;
-							
-						case "PtrGT":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if(cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
-							PtrCellBinaryGTConstraint pc2 = new PtrCellBinaryGTConstraint(cell1, cell2);
-							constraints.add(pc2);
-							constraints.add(pc2.getNegation());
-							break;
-							
-						case "Deref":
-							if (cell1.getType() != CellType.PTR || !cell2.isGlobal()) continue;
-							derefcstr = true;
-							DerefConstraint dc = new DerefConstraint(cell1, cell2);
-							constraints.add(dc);
-							constraints.add(dc.getNegation());
-							break;
-							
-						case "Overlap":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
-							if (cell1.isGlobal() != cell2.isGlobal()) continue;
-							overlapcstr = true;
-							OverlapConstraint oc = weighted ?
-									new OverlapConstraint(cell1, cell2, 1) : new OverlapConstraint(cell1, cell2);
-							constraints.add(oc);
-							constraints.add(weighted ? oc.getNegation(1000) : oc.getNegation());
-							break;
-							
-						case "Eq":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
-									(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT)) continue;
-							IntCellBinaryEqConstraint ic = new IntCellBinaryEqConstraint(cell1, cell2);
-							constraints.add(ic);
-							constraints.add(ic.getNegation());
-							break;
-							
-						case "LT":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
-									(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT)) continue;
-							IntCellBinaryLTConstraint ic2 = new IntCellBinaryLTConstraint(cell1, cell2);
-							constraints.add(ic2);
-							constraints.add(ic2.getNegation());
-							break;
-							
-						case "GT":
-							if (! (vars[pos[0]] < vars[pos[1]])) continue; 
-							if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
-									(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT)) continue;
-							IntCellBinaryGTConstraint ic3 = new IntCellBinaryGTConstraint(cell1, cell2);
-							constraints.add(ic3);
-							constraints.add(ic3.getNegation());
-							break;
-							
-						default:
-							assert false: "Unknown constraint";
-					
+							case "Alias":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
+								AliasConstraint ac = weighted ?
+										new AliasConstraint(cell1, cell2, 1) : new AliasConstraint(cell1, cell2);
+								constraints.add(ac);
+								constraints.add(weighted ? ac.getNegation(1000) : ac.getNegation());
+								break;
+
+							case "PtrLT":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
+								PtrCellBinaryLTConstraint pc1 = new PtrCellBinaryLTConstraint(cell1, cell2);
+								constraints.add(pc1);
+								constraints.add(pc1.getNegation());
+								break;
+
+							case "PtrGT":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
+								PtrCellBinaryGTConstraint pc2 = new PtrCellBinaryGTConstraint(cell1, cell2);
+								constraints.add(pc2);
+								constraints.add(pc2.getNegation());
+								break;
+							case "Deref":
+								if (cell1.getType() != CellType.PTR || !cell2.isGlobal()) continue;
+								derefcstr = true;
+								DerefConstraint dc = new DerefConstraint(cell1, cell2);
+								constraints.add(dc);
+								constraints.add(dc.getNegation());
+								break;
+
+							case "Overlap":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if (cell1.getType() != CellType.PTR || cell2.getType() != CellType.PTR) continue;
+								if (cell1.isGlobal() != cell2.isGlobal()) continue;
+								overlapcstr = true;
+								OverlapConstraint oc = weighted ?
+										new OverlapConstraint(cell1, cell2, 1) : new OverlapConstraint(cell1, cell2);
+								constraints.add(oc);
+								constraints.add(weighted ? oc.getNegation(1000) : oc.getNegation());
+								break;
+
+							case "Eq":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
+										(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT) &&
+										(cell1.getType() != CellType.UINT8 || cell2.getType() != CellType.UINT8) &&
+										(cell1.getType() != CellType.UINT16 || cell2.getType() != CellType.UINT16))
+									continue;
+								IntCellBinaryEqConstraint ic = new IntCellBinaryEqConstraint(cell1, cell2);
+								constraints.add(ic);
+								constraints.add(ic.getNegation());
+								break;
+
+							case "LT":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
+										(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT) &&
+										(cell1.getType() != CellType.UINT8 || cell2.getType() != CellType.UINT8) &&
+										(cell1.getType() != CellType.UINT16 || cell2.getType() != CellType.UINT16))
+									continue;
+								IntCellBinaryLTConstraint ic2 = new IntCellBinaryLTConstraint(cell1, cell2);
+								constraints.add(ic2);
+								constraints.add(ic2.getNegation());
+								break;
+
+							case "GT":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
+										(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT) &&
+										(cell1.getType() != CellType.UINT8 || cell2.getType() != CellType.UINT8) &&
+										(cell1.getType() != CellType.UINT16 || cell2.getType() != CellType.UINT16))
+									continue;
+								IntCellBinaryGTConstraint ic3 = new IntCellBinaryGTConstraint(cell1, cell2);
+								constraints.add(ic3);
+								constraints.add(ic3.getNegation());
+								break;
+								
+							case "LINEGT":
+								if (!(vars[pos[0]] < vars[pos[1]])) continue;
+								if ((cell1.getType() != CellType.INT || cell2.getType() != CellType.INT) &&
+										(cell1.getType() != CellType.UINT || cell2.getType() != CellType.UINT) &&
+										(cell1.getType() != CellType.UINT8 || cell2.getType() != CellType.UINT8) &&
+										(cell1.getType() != CellType.UINT16 || cell2.getType() != CellType.UINT16))
+									continue;
+								constval = Integer.parseInt(elems[3]);
+								BinaryArithmetic ic4 = new BinaryArithmetic("Aicha",cell1.getValue().id, Operator.PL,
+                                        cell2.getValue().id, Operator.GT ,constval,"notAicha");
+								constraints.add(ic4);
+								constraints.add(ic4.getNegation());
+								break;
+								
+								
+
+							default:
+								assert false : "Unknown constraint";
+
 						}
 					}
 				}
 			}
-			else {
-				assert false : "No constraints of arity 0 or > 2";
+
+			if (getNbVars(sconstr) >= 3) {
+				int[] coeffs = new int[(elems.length-1)/2];
+				for(int i=0;i<elems.length;i++){
+					if(i%2==0) continue;
+					coeffs[(i-1)/2]=Integer.parseInt(elems[i]);
+				}
+
+				Integer[] cellids = getCellIds(sconstr, elems.length);
+				CombinationIterator iterator = new CombinationIterator(cells.length, coeffs.length);
+				while (iterator.hasNext()) {
+					int[] vars = iterator.next();
+					AllPermutationIterator pIterator = new AllPermutationIterator(coeffs.length);
+					while (pIterator.hasNext()) {
+						int[] pos = pIterator.next();
+						ACQ_CellVariable[] cell_list = new ACQ_CellVariable[coeffs.length];
+						for (int i = 0; i < cell_list.length; i++) {
+							cell_list[i]=cells[vars[pos[i]]];
+						}
+						boolean good_perm = true;
+						for (int i = 0; i < cell_list.length; i++) {
+							//System.out.println("cellids[(2*i+1]="+cellids[2*i+1]);
+							//System.out.println("cell_list[i].cellid="+cell_list[i].cellid);
+
+							if (cellids[2*i+1] != null && cell_list[i].cellid != cellids[2*i+1]) {
+								good_perm = false;
+								break;
+							}
+						}
+						if (!good_perm) continue;
+
+						switch (elems[0]) {
+							case "LINEq0":
+								boolean good_type = true;
+								if (cell_list[0].getType() != CellType.INT && cell_list[0].getType() != CellType.UINT
+										&& cell_list[0].getType() != CellType.UINT8 && cell_list[0].getType() != CellType.UINT16)
+									continue;
+
+								//System.out.println("cell length :"+cell_list.length);
+								for (int i = 0; i < cell_list.length; i++) {
+									if (cell_list[0].getType() != cell_list[i].getType()) {
+										good_type = false;
+										break;
+									}
+								}
+								if (!good_type) continue;
+
+								int[] cell_id_list = new int[cell_list.length];
+								for(int i=0;i<cell_id_list.length;i++){
+									cell_id_list[i]=cell_list[i].cellid;
+								}
+								ScalarArithmetic c = new ScalarArithmetic("Dist", cell_id_list, coeffs, Operator.EQ, 0);
+								constraints.add(c);
+								constraints.add(c.getNegation());
+								break;
+							default:
+								break;
+
+						}
+					}
+				}
 			}
 		}
-		
-		if (disj.size() != 0) {
-			ConstraintSet[] sets = new ConstraintSet[constraints.size()-2+1];
-			for (int nb_disj : disj) {
-				if (nb_disj > constraints.size()) continue;
-				
-				sets[nb_disj-2] = constraintFactory.createSet();
-				CombinationIterator iterator = new CombinationIterator(constraints.size(), nb_disj);
-				while (iterator.hasNext()) {
-					int[] constrs = iterator.next();
-					if(alldiff(constrs)) {
-						ACQ_IConstraint[] iconstrs = new ACQ_IConstraint[constrs.length];
-						for (int i = 0; i < constrs.length; i++) {
-							iconstrs[i] = constraints.get_Constraint(constrs[i]);
-						}
-						
-						if (notneg(iconstrs)) {
-							ConstraintSet constraintSet = constraintFactory.createSet();
-							
-							int weight = 1;
-							weight = iconstrs[0].getWeight();
-							for (ACQ_IConstraint constr: iconstrs) {
-								constraintSet.add(constr);
-								weight = Math.max(weight, constr.getWeight());
+		if(!remDisj) {
+			if (disj.size() != 0) {
+				ConstraintSet[] sets = new ConstraintSet[constraints.size()-2+1];
+				for (int nb_disj : disj) {
+					if (nb_disj > constraints.size()) continue;
+					
+					sets[nb_disj-2] = constraintFactory.createSet();
+					CombinationIterator iterator = new CombinationIterator(constraints.size(), nb_disj);
+					while (iterator.hasNext()) {
+						int[] constrs = iterator.next();
+						if(alldiff(constrs)) {
+							ACQ_IConstraint[] iconstrs = new ACQ_IConstraint[constrs.length];
+							for (int i = 0; i < constrs.length; i++) {
+								iconstrs[i] = constraints.get_Constraint(constrs[i]);
 							}
 							
-							ACQ_DisjunctionConstraint new_c = weighted ? 
-									new ACQ_DisjunctionConstraint(constraintFactory, constraintSet, weight) : 
-										new ACQ_DisjunctionConstraint(constraintFactory, constraintSet);
-									
-							sets[nb_disj-2].add(new_c);
-							ACQ_IConstraint neg = weighted ? new_c.getNegation(1) : new_c.getNegation();
-							sets[nb_disj-2].add(neg);
+							if (notneg(iconstrs)) {
+								ConstraintSet constraintSet = constraintFactory.createSet();
+								
+								int weight = 1;
+								weight = iconstrs[0].getWeight();
+								for (ACQ_IConstraint constr: iconstrs) {
+									constraintSet.add(constr);
+									weight = Math.max(weight, constr.getWeight());
+								}
+								
+								ACQ_DisjunctionConstraint new_c = weighted ? 
+										new ACQ_DisjunctionConstraint(constraintFactory, constraintSet, weight) : 
+											new ACQ_DisjunctionConstraint(constraintFactory, constraintSet);
+										
+								sets[nb_disj-2].add(new_c);
+								ACQ_IConstraint neg = weighted ? new_c.getNegation(1) : new_c.getNegation();
+								sets[nb_disj-2].add(neg);
+							}
 						}
 					}
 				}
-			}
-			
-			for (ConstraintSet set : sets) {
-				if (set != null) constraints.addAll(set);
+				
+				for (ConstraintSet set : sets) {
+					if (set != null) constraints.addAll(set);
+				}
+				
 			}
 			
 		}
 		
+		
 		ACQ_Network network = new ACQ_Network(constraintFactory, allVarSet, constraints);
+		//System.out.println(network.toString());
 		return new ACQ_Bias(network);
 	}
 	
@@ -544,7 +667,7 @@ public class PreCA extends DefaultExperience {
 				res[index] = null;
 			}
 			else if (elems[i].startsWith("v")){
-				res[index] = Integer.parseInt(elems[i].substring(1));
+				res[index]= Integer.parseInt(elems[i].substring(1));
 			}
 			index++;
 		}
@@ -608,8 +731,7 @@ public class PreCA extends DefaultExperience {
 						ACQ_CellVariable cell1 = cells[vars[pos[0]]];
 						ACQ_CellVariable cell2 = cells[vars[pos[1]]];
 						
-						if (cell1.getType() == CellType.PTR && cell2.getType() == CellType.PTR &&
-								cell1.isGlobal() == cell2.isGlobal()) {
+						if (cell1.getType() == CellType.PTR && cell2.getType() == CellType.PTR ) {
 							OverlapConstraint over = new OverlapConstraint(cell1, cell2);
 							
 							BinaryArithmetic lower1 = new BinaryArithmetic("LessEqualXY", 
@@ -652,7 +774,6 @@ public class PreCA extends DefaultExperience {
 							constraints.add(diff_ref);
 							
 						}
-						
 					}
 				}
 			}
@@ -662,7 +783,61 @@ public class PreCA extends DefaultExperience {
 		known = new ACQ_Bias(network);
 		return known;
 	}
+	private boolean satisfiable(ACQ_Network net, ACQ_Bias bias) {
+		return !csolv.solveQ(concat(net, known.getNetwork(),bias)).isEmpty();
+	}
 	
+	protected ACQ_Network concat(ACQ_Network net1, ACQ_Network net2, ACQ_Bias bias) {
+		ConstraintFactory fact = bias.getNetwork().getFactory();
+		ACQ_Network res = new ACQ_Network(fact, bias.getVars());
+		res.addAll(net1, true);
+		res.addAll(net2, true);
+		return res;
+	}
+	
+	public ContradictionSet createBackgroundKnowledgeAuto(ACQ_Bias bias, ConstraintMapping mapping, int lmax) {
+		ConstraintFactory constraintfactory = bias.getNetwork().getFactory();
+		
+		ContradictionSet res = new ContradictionSet(constraintfactory, bias.getVars(), mapping);
+		
+		for (ACQ_IConstraint cst : this.getKnownConstraints().getConstraints()) {
+			ACQ_Network net = new ACQ_Network(constraintfactory, bias.getVars());
+			net.add(cst, true);
+			res.addFact(new Contradiction(net));
+		}
+		if (!backknow)	return res;
+
+		int n = bias.getSize();
+		for(int l=1; l <= lmax ; l++) {
+			CombinationIterator iter = new CombinationIterator(n, l);
+			
+			while(iter.hasNext()) {
+				int[] indices = iter.next();
+				ConstraintSet constraints = constraintfactory.createSet();
+				for(int i : indices) {
+					constraints.add(bias.getConstraints().get_Constraint(i));
+				}
+				ACQ_Network C = new ACQ_Network(constraintfactory, allVarSet, constraints);
+				if(!satisfiable(C,bias)) {
+					continue;
+				}
+				for(ACQ_IConstraint c : bias.getConstraints()) {
+					//if(C.contains(c)) continue; // retirer pour avoir les négations
+					ACQ_Network ruleCorrectness = new ACQ_Network(constraintfactory, allVarSet, constraints);
+					ruleCorrectness.add(c.getNegation(), true);
+					if(!satisfiable(ruleCorrectness,bias)) {
+						res.add(new Contradiction(ruleCorrectness));
+					}
+				}
+			}
+			
+		}
+		//System.out.println("bk : " + res.toString());
+		return res;
+	}
+	
+	
+		
 	public ContradictionSet createBackgroundKnowledge(ACQ_Bias bias, ConstraintMapping mapping) {
 		ConstraintFactory constraintfactory = bias.getNetwork().getFactory();
 		
@@ -673,7 +848,6 @@ public class PreCA extends DefaultExperience {
 			net.add(cst, true);
 			res.addFact(new Contradiction(net));
 		}
-		
 		if (!backknow)	return res;
 		for (ACQ_IConstraint constr: bias.getConstraints()) {
 			if (constr.getName().contains("_or_") || 
@@ -691,6 +865,22 @@ public class PreCA extends DefaultExperience {
 				 * and remove c1 /\ c2 /\ (~c1 /\ ~c2)
 				 * and TODO remove a(c1) /\ ~a(c1 \/ X) <=> false 
 				 */
+				
+				//a(c1) ∧ a(c2 ∨ ¬c1) ∧ (¬c2 ∨ ¬c1)
+				for (ACQ_IConstraint constr2 : bias.getConstraints()) {
+					if(!(constr instanceof ACQ_DisjunctionConstraint) && !(constr instanceof ACQ_ConjunctionConstraint) &&
+							!(constr2 instanceof ACQ_DisjunctionConstraint) && !(constr2 instanceof ACQ_ConjunctionConstraint) &&
+							(!constr.equals(constr2)) && (!constr.equals(constr2.getNegation())) ) {
+						ACQ_Network net = new ACQ_Network(constraintfactory, bias.getVars());
+						net.add(constr, true);
+						net.add(new ACQ_DisjunctionConstraint(constraintfactory, constr.getNegation(), constr2), true);
+						net.add(new ACQ_DisjunctionConstraint(constraintfactory, constr.getNegation(), constr2.getNegation()), true);
+						res.add(new Contradiction(net));
+					}
+					
+				}
+				
+				//a(c1) ∧ a(c2) ∧a(¬c2 ∨ ¬c1)
 				for (ACQ_IConstraint constr2: bias.getConstraints()) {
 					if (!(constr instanceof ACQ_DisjunctionConstraint) && !(constr instanceof ACQ_ConjunctionConstraint) &&
 						!(constr2 instanceof ACQ_DisjunctionConstraint) && !(constr2 instanceof ACQ_ConjunctionConstraint) &&
@@ -701,6 +891,26 @@ public class PreCA extends DefaultExperience {
 						net.add(new ACQ_DisjunctionConstraint(constraintfactory, constr.getNegation(), constr2.getNegation()), true);
 						res.add(new Contradiction(net));
 					}
+				}
+				
+				//a(c1) ∧ a(c2) ∧ (c3 ∨ ¬c1) ∧ (¬c3 ∨ ¬c2)
+				for (ACQ_IConstraint constr2: bias.getConstraints()) {
+					for (ACQ_IConstraint constr3: bias.getConstraints()) {
+						if (!(constr instanceof ACQ_DisjunctionConstraint) && !(constr instanceof ACQ_ConjunctionConstraint) && 
+								!(constr2 instanceof ACQ_DisjunctionConstraint) && !(constr2 instanceof ACQ_ConjunctionConstraint) &&
+								!(constr3 instanceof ACQ_DisjunctionConstraint) && !(constr3 instanceof ACQ_ConjunctionConstraint) &&
+								(!constr.equals(constr2)) && (!constr.equals(constr2.getNegation())) &&
+								(!constr.equals(constr3)) && (!constr.equals(constr3.getNegation())) &&
+								(!constr2.equals(constr3)) && (!constr2.equals(constr3.getNegation()))) {
+								ACQ_Network net = new ACQ_Network(constraintfactory, bias.getVars());
+								net.add(constr, true);
+								net.add(constr2, true);
+								net.add(new ACQ_DisjunctionConstraint(constraintfactory, constr3, constr.getNegation()), true);
+								net.add(new ACQ_DisjunctionConstraint(constraintfactory, constr3.getNegation(), constr2.getNegation()), true);
+								res.add(new Contradiction(net));
+							}
+					}
+					
 				}
 			}
 		}
@@ -737,6 +947,7 @@ public class PreCA extends DefaultExperience {
 							res.add(new Contradiction(net));
 							
 						}
+						// aicha : prq pas sur les UINT ?
 						else if (cell1.getType() == CellType.INT && cell2.getType() == CellType.INT) {
 							c1 = new IntCellUnaryEqConstraint(cell1, 0); // = 0
 							c2 = new IntCellBinaryEqConstraint(cell1, cell2); // cell1 = cell2
@@ -911,7 +1122,29 @@ public class PreCA extends DefaultExperience {
 				}
 			}
 		}
-		
+		if(nbvars >= 2) {
+			//remove A ∧ (B ∨ ¬A) ∧ (¬B ∨ ¬A)
+			for (ACQ_IConstraint A : bias.getConstraints()) {
+				if (!(A instanceof ACQ_DisjunctionConstraint || A instanceof ACQ_ConjunctionConstraint)) {
+					for (ACQ_IConstraint B : bias.getConstraints()) {
+						if (B.equals(A) || B.equals(A.getNegation())) continue;
+
+						ACQ_IConstraint notA = A.getNegation();
+						ACQ_IConstraint disj1 = new ACQ_DisjunctionConstraint(constraintfactory, B, notA);
+						ACQ_IConstraint disj2 = new ACQ_DisjunctionConstraint(constraintfactory, B.getNegation(), notA);
+
+						if (bias.contains(A) && bias.contains(disj1) && bias.contains(disj2)) {
+							ACQ_Network net = new ACQ_Network(constraintfactory, bias.getVars());
+							net.add(A, true);
+							net.add(disj1, true);
+							net.add(disj2, true);
+							res.add(new Contradiction(net));
+						}
+					}
+				}
+			}
+		}
+
 		return res;
 	}
 
@@ -934,6 +1167,15 @@ public class PreCA extends DefaultExperience {
 				net.add(new IntCellUnaryGTConstraint(cell, 0), true); // integer > 0
 			}
 			else if (cell.getType() == CellType.UINT) {
+				net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+			}
+			else if (cell.getType() == CellType.UINT8) {
+				net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+			}
+			else if (cell.getType() == CellType.UINT16) {
+				net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+			}
+			else if (cell.getType() == CellType.BOOL) {
 				net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
 			}
 		}
@@ -963,6 +1205,12 @@ public class PreCA extends DefaultExperience {
 						net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
 					}
 					if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT && cell2.getType() == CellType.UINT) {
+						net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
+					}
+					if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT8 && cell2.getType() == CellType.UINT8) {
+						net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
+					}
+					if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT16 && cell2.getType() == CellType.UINT16) {
 						net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
 					}
 				}
@@ -1006,6 +1254,15 @@ public class PreCA extends DefaultExperience {
 					else if (cell.getType() == CellType.UINT) {
 						net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
 					}
+					else if (cell.getType() == CellType.UINT8) {
+						net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+					}
+					else if (cell.getType() == CellType.UINT16) {
+						net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+					}
+					else if (cell.getType() == CellType.BOOL) {
+						net.add(new IntCellUnaryEqConstraint(cell, 0, true), true); // integer != 0
+					}
 				}
 				
 				CombinationIterator iterator2 = new CombinationIterator(cells.length, 2);
@@ -1033,6 +1290,12 @@ public class PreCA extends DefaultExperience {
 							net.add(new IntCellBinaryEqConstraint(cell3, cell4, true), true); // int1 != int2
 						}
 						if(vars2[pos[0]] < vars2[pos[1]] && cell3.getType() == CellType.UINT && cell4.getType() == CellType.UINT) {
+							net.add(new IntCellBinaryEqConstraint(cell3, cell4, true), true); // int1 != int2
+						}
+						if(vars2[pos[0]] < vars2[pos[1]] && cell3.getType() == CellType.UINT8 && cell4.getType() == CellType.UINT8) {
+							net.add(new IntCellBinaryEqConstraint(cell3, cell4, true), true); // int1 != int2
+						}
+						if(vars2[pos[0]] < vars2[pos[1]] && cell3.getType() == CellType.UINT16 && cell4.getType() == CellType.UINT16) {
 							net.add(new IntCellBinaryEqConstraint(cell3, cell4, true), true); // int1 != int2
 						}
 					}
@@ -1074,6 +1337,12 @@ public class PreCA extends DefaultExperience {
 				else if (cell2.getType() == CellType.UINT) {
 					net.add(new IntCellUnaryEqConstraint(cell2, 0, true), true); // integer != 0
 				}
+				else if (cell2.getType() == CellType.UINT8) {
+					net.add(new IntCellUnaryEqConstraint(cell2, 0, true), true); // integer != 0
+				}
+				else if (cell2.getType() == CellType.UINT16) {
+					net.add(new IntCellUnaryEqConstraint(cell2, 0, true), true); // integer != 0
+				}
 			}
 			
 			if (cells.length >= 2) {
@@ -1104,6 +1373,12 @@ public class PreCA extends DefaultExperience {
 						if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT && cell2.getType() == CellType.UINT) {
 							net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
 						}
+						if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT8 && cell2.getType() == CellType.UINT8) {
+							net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
+						}
+						if(vars[pos[0]] < vars[pos[1]] && cell1.getType() == CellType.UINT16 && cell2.getType() == CellType.UINT16) {
+							net.add(new IntCellBinaryEqConstraint(cell1, cell2, true), true); // int1 != int2
+						}
 					}
 					
 				}
@@ -1122,8 +1397,10 @@ public class PreCA extends DefaultExperience {
 				 !noprint,
 				 true
 			);
-			if (!mss) ACQ_Utils.executeConacqExperience(expe, active);
-			else ACQ_Utils.executeDCAExperience(expe);
+			if (cany) ACQ_Utils.executeCANYExperience(expe); 
+			else if(dca) ACQ_Utils.executeDCAExperience(expe);
+			else if(candy) ACQ_Utils.executeCANDYExperience(expe);
+			else ACQ_Utils.executeConacqExperience(expe, active); 
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -1210,7 +1487,7 @@ public class PreCA extends DefaultExperience {
 					+ "\r\n"
 					+ "# Variables Setup\r\n"
 					+ "nargs: <int>                     number of inputs of the function\r\n"
-					+ "types: type1, ..., typeN         type of each input (INT, UINT, PTR)\r\n"
+					+ "types: type1, ..., typeN         type of each input (INT, UINT, UINT8, UINT16, BOOL, PTR)\r\n"
 					+ "globals: scope1, ..., scopeN     scope of each input (true means global, false local)\r\n"
 					+ "addr_globals: addr1, ..., addrM  address where are stored in the binary each global variable\r\n"		
 					+ "\r\n"
@@ -1225,6 +1502,7 @@ public class PreCA extends DefaultExperience {
 					+ "active: <bool>                   run acquisition in active mode (default, true)\r\n"
 					+ "disj: <mode>                     mode to handle disjunction among auto, mss, <int> and {<int>, ..., <int>}\r\n"
 					+ "strat: <bool>                    use preprocessing (default, true)\r\n"
+					+ "mses: <bool>                     stock MSes\r\n"
 					+ "back: <bool>                     use background knowledge (default, true)\r\n"
 					+ "verbose: <bool>                  set verbose mode (default, true)\r\n"
 					+ "json: <bool>                     format results in json (default, false)\r\n"
@@ -1240,6 +1518,7 @@ public class PreCA extends DefaultExperience {
 	}
 	
 	private static void parse_infile(String filename) {
+		
 		binaryconf = new File(filename).getAbsolutePath();
 		try (BufferedReader br = Files.newBufferedReader(Paths.get(filename))) {
             // read line by line
@@ -1247,8 +1526,13 @@ public class PreCA extends DefaultExperience {
             while ((line = br.readLine()) != null) {
             	if (line.startsWith("active")) {
             		active = Boolean.parseBoolean(line.split(":")[1].strip());
-            	} 
-            	else if (line.startsWith("nargs")) {
+            	} else if (line.startsWith("arch")) {
+					String arch_str = line.split(":")[1].strip();
+					if(arch_str.equals("X86-64")) arch=ArchType.X86_64;
+					else if (arch_str.equals("arm32")) arch=ArchType.ARM32;
+
+
+				} else if (line.startsWith("nargs")) {
             		nbvars = Integer.parseInt(line.split(":")[1].strip());
             	}
             	else if (line.startsWith("types")) {
@@ -1257,12 +1541,15 @@ public class PreCA extends DefaultExperience {
             		for (int i = 0; i < stypes.length; i++) {
             			String t = stypes[i].strip();
             			if (t.contains("PTR")) typelist[i] = CellType.PTR;
-            			else if (t.contains("UINT")) typelist[i] = CellType.UINT;
+            			else if (t.contains("UINT8")) typelist[i] = CellType.UINT8;
+						else if (t.contains("UINT16")) typelist[i] = CellType.UINT16;
+						else if (t.contains("UINT")) typelist[i] = CellType.UINT;
             			else if (t.contains("INT")) typelist[i] = CellType.INT;
+						else if (t.contains("BOOL")) typelist[i] = CellType.BOOL;
             			else assert false : "unknown type";
             		}
             		types = typelist;
-            	}
+            	}            	
             	else if (line.startsWith("globals")) {
             		String[] sglobals = line.split(":")[1].split(",");
             		boolean[] globalslist = new boolean[sglobals.length];
@@ -1273,8 +1560,8 @@ public class PreCA extends DefaultExperience {
             	}
             	else if (line.startsWith("disj")) {
             		String val = line.split(":")[1].strip();
-            		if (val.equals("auto")) autodisj = true;
-            		else if (val.startsWith("mss")) mss = true;
+            		if (val.equals("mss")) remDisj =true;
+            		else if (val.equals("auto")) autodisj = true;
             		else if (val.startsWith("{")) {
             			val = val.replace("{", "").replace("}", "");
             			for (String s : val.split(",")) {
@@ -1287,8 +1574,20 @@ public class PreCA extends DefaultExperience {
             			}
             		}
             	}
+            	
+            	else if (line.startsWith("method")) {
+            		String val = line.split(":")[1].strip();
+            		if (val.equals("conacq"));
+            		else if (val.startsWith("dca")) dca = true;
+			else if (val.startsWith("cany")) cany = true;
+			else if (val.startsWith("candy")) candy = true;
+         
+            	}
             	else if (line.startsWith("strat")) {
             		strat = Boolean.parseBoolean(line.split(":")[1].strip());
+            	}
+            	else if (line.startsWith("MSes")) {
+            		mses = Boolean.parseBoolean(line.split(":")[1].strip());
             	}
             	else if (line.startsWith("back")) {
             		backknow = Boolean.parseBoolean(line.split(":")[1].strip());
@@ -1312,7 +1611,7 @@ public class PreCA extends DefaultExperience {
             		}
             	}
             }
-            assert active || !mss;
+            assert active || !dca;    
             assert active || !strat;
 
         } catch (IOException e) {
@@ -1322,7 +1621,7 @@ public class PreCA extends DefaultExperience {
 	 	if(autodisj) {
 	 		int maxdisj = 1;
 	 		for (CellType type : types) {
-	 			if (type == CellType.INT || type == CellType.UINT) {
+	 			if (type == CellType.INT || type == CellType.UINT|| type == CellType.UINT8|| type == CellType.UINT16 || type == CellType.BOOL) {
 	 				maxdisj += 1;
 	 			}
 	 		}
@@ -1333,13 +1632,19 @@ public class PreCA extends DefaultExperience {
 			}
 	 	}
 	 	
-	 	binsec = new Binsec(filename, types, globals);
+	 	binsec = new Binsec(filename, types, globals, arch);
+	}
+	
+	public boolean getMSesAuto() {
+		return mses;
 	}
 
 	@Override
 	public SATSolver createSATSolver() {
-		return new MiniSatSolver();
+		//return new MiniSatSolver();
 		//return new NaPSSolver();
+		return new Sat4jMaxSATSolver();
+		
 	}
 	
 	@Override
@@ -1363,7 +1668,6 @@ public class PreCA extends DefaultExperience {
 		return new CellQueryPrinter(types, globals);
 	}
 	
-	
 	@Override
 	public ACQ_Network simplify(ACQ_Network net) {
 		if (!simplify) return net;
@@ -1376,5 +1680,80 @@ public class PreCA extends DefaultExperience {
 		if (!simplify) return net;
 		Simplifier simpl = new MUSSimplifier(muses, csolv, known);
 		return simpl.simplify(net);
+	}
+	
+	protected ACQ_Network negCNFtoCNF(ACQ_Network negMS, ConstraintFactory fact, ACQ_Scope vars) {
+	    ArrayList<ConstraintSet> clauses = new ArrayList<>();
+	    clauses.add(fact.createSet());
+	    
+	    //Distribution (extract all combinations) from A ∨ (B ∧ C)  to (A ∨ B) ∧ (A ∨ C)
+	    for (ACQ_IConstraint cst : negMS) {
+	        ConstraintSet lits = fact.createSet();
+	        if (cst instanceof ACQ_DisjunctionConstraint)
+	            lits.addAll(((ACQ_DisjunctionConstraint) cst).constraintSet);
+	        else lits.add(cst);
+
+	        ArrayList<ConstraintSet> next = new ArrayList<>();
+	        for (ConstraintSet partial : clauses)
+	            for (ACQ_IConstraint l : lits) {
+	                ConstraintSet c = fact.createSet(partial);
+	                c.add(l.getNegation());       
+	                next.add(c);
+	            }
+	        clauses = next;
+	    }
+
+	    ACQ_Network cnf = new ACQ_Network(fact, vars);
+	    for (ConstraintSet c : clauses) {
+	        boolean taut = false;
+	        for (ACQ_IConstraint l : c) if (c.contains(l.getNegation())) { taut = true; break; }
+	        if (taut) continue;
+	        if (c.size() > 1) cnf.add(new ACQ_DisjunctionConstraint(fact, c), true);
+	        else if (c.size() == 1) cnf.add(c.get_Constraint(0), true);
+	    }
+	    return cnf;
+	}
+	
+	public ACQ_Network simplifyMS(ACQ_Network learnedMS, ArrayList<ACQ_Network> muses) {
+		if (!simplify) return learnedMS;
+	    if (learnedMS == null || muses == null) return learnedMS;
+
+	    ConstraintFactory fact = learnedMS.getFactory();
+
+	    // ---------- ¬MS (CNF) ----------
+	    ACQ_Network negMS = new ACQ_Network(fact, learnedMS.getVariables());
+
+	    for (ACQ_IConstraint clause : learnedMS) { // 1 clause
+	        if (!(clause instanceof ACQ_DisjunctionConstraint)) {
+	            negMS.add(clause.getNegation(), true);
+	            continue;
+	        }
+	        for (ACQ_IConstraint ci : ((ACQ_DisjunctionConstraint) clause).constraintSet) {
+	        	
+	        	
+	            if (ci instanceof FalseConstraint) continue;               
+	            if (ci instanceof ACQ_ConjunctionConstraint) {
+	                ConstraintSet negs = fact.createSet(); 
+	                for (ACQ_IConstraint atom : ((ACQ_ConjunctionConstraint) ci).getConstraints()) {  
+	                    negs.add(atom.getNegation());                      
+	                }
+	                if (negs.size() > 1)
+	                    negMS.add(new ACQ_DisjunctionConstraint(fact, negs), true);
+	                else if (negs.size() == 1)
+	                    negMS.add(negs.get_Constraint(0), true);
+	            } else {
+	                negMS.add(ci.getNegation(), true);                    
+	            }
+	        }
+	    }
+	    
+	    // ----------- simplify the CNF negMS -----------------
+	    negMS = simplify(negMS, muses);
+	    
+	    // from negMS to MS (DNF) converted to CNF
+	    ACQ_Network cnf = negCNFtoCNF(negMS, fact, learnedMS.getVariables());
+	    
+	    //simplify the CNF MS
+	    return simplify(cnf, muses);
 	}
 }

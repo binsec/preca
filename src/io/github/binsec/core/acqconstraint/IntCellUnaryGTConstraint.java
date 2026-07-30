@@ -1,24 +1,24 @@
-/****************************************************************************/
-/*  This file is part of PRECA.                                             */
-/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.  */
-/*                                                                          */
-/*  Copyright (C) 2019-2023                                                 */
-/*    CEA (Commissariat à l'énergie atomique et aux énergies                */
-/*         alternatives)                                                    */
-/*                                                                          */
-/*  you can redistribute it and/or modify it under the terms of the GNU     */
-/*  Lesser General Public License as published by the Free Software         */
-/*  Foundation, version 2.1.                                                */
-/*                                                                          */
-/*  It is distributed in the hope that it will be useful,                   */
-/*  but WITHOUT ANY WARRANTY; without even the implied warranty of          */
-/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           */
-/*  GNU Lesser General Public License for more details.                     */
-/*                                                                          */
-/*  See the GNU Lesser General Public License version 2.1                   */
-/*  for more details (enclosed in the file licenses/LGPLv2.1).              */
-/*                                                                          */
-/****************************************************************************/
+/******************************************************************************/
+/*  This file is part of PRECA.                                               */
+/*  PRECA is part of the BINSEC toolbox for binary-level program analysis.    */
+/*                                                                            */
+/*  Copyright (C) 2019-2026                                                   */
+/*  CEA (Commissariat à l'énergie atomique et aux énergies                    */
+/*       alternatives)                                                        */
+/*                                                                            */
+/*  you can redistribute it and/or modify it under the terms of the GNU       */
+/*  Lesser General Public License as published by the Free Software           */
+/*  Foundation, version 2.1.                                                  */
+/*                                                                            */
+/*  It is distributed in the hope that it will be useful,                     */
+/*  but WITHOUT ANY WARRANTY; without even the implied warranty of            */
+/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             */
+/*  GNU Lesser General Public License for more details.                       */
+/*                                                                            */
+/*  See the GNU Lesser General Public License version 2.1                     */
+/*  for more details (enclosed in the file licenses/LGPLv2.1).                */
+/*                                                                            */
+/******************************************************************************/
 
 package io.github.binsec.core.acqconstraint;
 
@@ -27,10 +27,12 @@ import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.solver.variables.IntVar;
 
+import constracq.core.acqconstraint.ACQ_IConstraint;
+import constracq.core.acqconstraint.UnaryConstraint;
+import constracq.core.learner.ACQ_Query;
 import io.github.binsec.core.acqvariable.ACQ_CellVariable;
 import io.github.binsec.core.acqvariable.ACQ_Variable;
 import io.github.binsec.core.acqvariable.CellType;
-import io.github.binsec.core.learner.ACQ_Query;
 
 public class IntCellUnaryGTConstraint extends UnaryConstraint {
 	ACQ_CellVariable cell1 = null;
@@ -50,7 +52,7 @@ public class IntCellUnaryGTConstraint extends UnaryConstraint {
 		cell1.addValue(constant-1);
 		
 		ACQ_Variable v1 = cell1.getValue();
-		if (v1.getType() != CellType.INT && v1.getType() != CellType.UINT) {
+		if (v1.getType() != CellType.INT && v1.getType() != CellType.UINT && v1.getType() != CellType.UINT8 && v1.getType() != CellType.UINT16 ) {
 			System.err.println("Constraint badly typed");
 			System.exit(1);
 		} else {
@@ -138,29 +140,32 @@ public class IntCellUnaryGTConstraint extends UnaryConstraint {
 	@Override
 	public String toSmtlib() {
 		String val1 = "v" + this.cell1.cellid;
-		if (!negated) {
-			if (this.cell1.getType() == CellType.INT) {
-				return "(sgt " + val1 + " " + String.format("#x%08x", this.constant) + ")";
-			}
-			else if (this.cell1.getType() == CellType.UINT) {
-				return "(ugt " + val1 + " " + String.format("#x%08x", this.constant) + ")";
-			}
-			else {
-				assert false;
-				return null;
-			}
-		} else {
-			if (this.cell1.getType() == CellType.INT) {
-				return "(not (sgt " + val1 + " " + String.format("#x%08x", this.constant) + "))";
-			}
-			else if (this.cell1.getType() == CellType.UINT) {
-				return "(not (ugt " + val1 + " " + String.format("#x%08x", this.constant) + "))";
-			}
-			else {
-				assert false;
-				return null;
-			}
+		
+		String expr = new String();
+
+		switch (this.cell1.getType()) {
+		case INT:
+			expr = "(sgt " + val1 + " " + String.format("#x%08x", this.constant) + ")";
+			break;
+		case UINT:
+			expr = "(ugt " + val1 + " " + String.format("#x%08x", this.constant) + ")";
+			break;
+		case UINT8:
+			expr = "(ugt " + val1 + " " + String.format("#x%02x", this.constant) + ")";
+			break;
+		case UINT16:
+			expr = "(ugt " + val1 + " " + String.format("#x%04x", this.constant) + ")";
+			break;
+		default:
+			assert false : "not supported type";
+			break;
 		}
+		if (negated)
+			return "(not " + expr + ")";
+
+		return expr;
+		
+		
 	}
 
 	@Override

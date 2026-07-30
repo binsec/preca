@@ -15,6 +15,6 @@
  (name libconcrete)
  (synopsis "Precondition inference with constraint acquisition")
  (depends
-  (binsec (>= 0.8.1))
+  (binsec (= 0.10.1))
   unisim_archisec))
 

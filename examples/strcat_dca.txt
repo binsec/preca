@@ -2,21 +2,23 @@
 nargs: 2
 types: PTR, PTR
 globals: false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/strcat
 binsec: datasets/binsec_ini/ijcai22/nopost/strcat.ini
 
 # Expected result
-precond: And(v[0] != 0, v[1] != 0, Or(Strlen(v[1]) == 0, And(v[0] != v[1], Or(v[0] > v[1], v[1] >= v[0] + Strlen(v[0]) + 1), Or(v[1] > v[0], v[0] >= v[1] + Strlen(v[1]) +1))))
+precond: (and (valid v0) (valid v1) (or (not (overlap v0 v1)) (strleneq v1 #x00000000)))
 
 # Acquisition Options
 active: true
+method: dca
 disj: mss
-back: true
+back: false
 verbose: true
 json: false
-timeout: 60
+timeout: 3600
 emultimeout: 5
 action_emultimeout: false
 simplify: true

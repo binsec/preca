@@ -1,0 +1,16 @@
+# Variables Setup
+nargs: 1
+types: INT
+globals: false
+arch : X86-64
+
+# Emulator Options
+bin: datasets/binaries/fact
+binsec: datasets/binsec_ini/ijcai22/nopost/fact.ini
+
+# Expected result
+precond: (not (slt v0 #x00000000))
+
+# Language
+bias: Eq_X_0, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
+

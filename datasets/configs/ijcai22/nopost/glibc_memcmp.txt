@@ -2,6 +2,7 @@
 nargs: 3
 types: PTR, PTR, UINT
 globals: false, false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/glibc_memcmp

@@ -2,6 +2,7 @@
 nargs: 8
 types: PTR, INT, PTR, INT, UINT, PTR, PTR, PTR
 globals: false, false, false, false, false, false, false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/crypt_and_hash

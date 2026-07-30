@@ -1,24 +1,24 @@
-############################################################################
-#  This file is part of PRECA.                                             #
-#  PRECA is part of the BINSEC toolbox for binary-level program analysis.  #
-#                                                                          #
-#  Copyright (C) 2019-2023                                                 #
-#    CEA (Commissariat à l'énergie atomique et aux énergies                #
-#         alternatives)                                                    #
-#                                                                          #
-#  you can redistribute it and/or modify it under the terms of the GNU     #
-#  Lesser General Public License as published by the Free Software         #
-#  Foundation, version 2.1.                                                #
-#                                                                          #
-#  It is distributed in the hope that it will be useful,                   #
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of          #
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           #
-#  GNU Lesser General Public License for more details.                     #
-#                                                                          #
-#  See the GNU Lesser General Public License version 2.1                   #
-#  for more details (enclosed in the file licenses/LGPLv2.1).              #
-#                                                                          #
-############################################################################
+##############################################################################
+#  This file is part of PRECA.                                               #
+#  PRECA is part of the BINSEC toolbox for binary-level program analysis.    #
+#                                                                            #
+#  Copyright (C) 2019-2026                                                   #
+#  CEA (Commissariat à l'énergie atomique et aux énergies                    #
+#       alternatives)                                                        #
+#                                                                            #
+#  you can redistribute it and/or modify it under the terms of the GNU       #
+#  Lesser General Public License as published by the Free Software           #
+#  Foundation, version 2.1.                                                  #
+#                                                                            #
+#  It is distributed in the hope that it will be useful,                     #
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of            #
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the             #
+#  GNU Lesser General Public License for more details.                       #
+#                                                                            #
+#  See the GNU Lesser General Public License version 2.1                     #
+#  for more details (enclosed in the file licenses/LGPLv2.1).                #
+#                                                                            #
+##############################################################################
 
 from plumbum import local, ProcessExecutionError
 from z3 import BitVec, Solver, And, Or, sat, unsat, unknown
@@ -32,7 +32,8 @@ def mean(l):
     if len(l) == 0:
         return None
     l = [ i if i != None else 0 for i in l ]
-    return round(float(sum(l)) / len(l), 2)
+    return round(float(sum(l)) / len(l), 5)
+	
 
 def standard_deviation(l):
     if len(l) == 0:
@@ -42,7 +43,7 @@ def standard_deviation(l):
     for e in l:
         assert e > 0
         res += (e - m)**2 
-    return round(sqrt(float(res) / len(l)), 2)
+    return round(sqrt(float(res) / len(l)), 5)
 
 def parse_results(results):
     parsed = json.loads(results)
@@ -70,6 +71,12 @@ def display_results(arg):
     print("Mean time rate to learn first constraint {}%".format(mean(mean_first_learned_rate)))
     print("Mean number of positive queries {}".format(mean(mean_nb_pos_query)))
     print("Mean number of negative queries {}\n".format(mean(mean_nb_neg_query)))
+    
+    print("Mean speed of positive queries generation time {} s".format(mean(mean_speed_pos_query)))
+    print("Mean median of positive queries generation time {} s".format(mean(mean_median_pos_query)))
+    print("Standard deviation of speed of positive queries generation time {} s\n".format(standard_deviation(mean_speed_pos_query)))
+    
+    
     
     print("Mean clause size: {}".format(mean(mean_clause_size)))
     print("Min clause size: {}".format(min(mean_clause_size) if len(mean_clause_size) > 0 else None))
@@ -102,6 +109,8 @@ def stats(data, timeout):
     mean_first_learned_rate = []
     mean_nb_pos_query = []
     mean_nb_neg_query = []
+    mean_speed_pos_query = []
+    mean_median_pos_query = []
     n_answer_timeouted = 0
     mean_clause_size = []
     ncollapse = 0
@@ -124,7 +133,7 @@ def stats(data, timeout):
         if data[i]["timeouted"] == "yes" or (timeout != None and data[i]["convTime"] > timeout): 
                 ntimeout += 1
                 if data[i].get("last_sound_network_time") != None:
-                    if data[i]["network"] != None and (timeout == None or data[i]["last_sound_network_time"] < timeout):
+                    if data[i]["network_MS"] != None and (timeout == None or data[i]["last_sound_network_time"] < timeout):
                         ntimeouted_but_find += 1
                     else:
                         toprocess = False
@@ -133,7 +142,7 @@ def stats(data, timeout):
         #if data[i]["timeouted"] == "no" and (timeout == None or data[i]["convTime"] <= timeout):
         
         if toprocess:
-            assert(data[i]["network"] != None)
+            assert(data[i]["network_MS"] != None)
             convTimes.append(data[i]["convTime"])
             mean_querygens.append(data[i]["query_gen_mean"])
             nqueries.append(data[i]["nb_queries"])
@@ -143,6 +152,8 @@ def stats(data, timeout):
 
             mean_nb_pos_query.append(data[i]["nb_pos_queries"])
             mean_nb_neg_query.append(data[i]["nb_neg_queries"])
+            mean_speed_pos_query.append(data[i]["mean_speed_pos_queries"])
+            mean_median_pos_query.append(data[i]["median_pos_queries"])
 
             mean_clause_size.append(data[i]["clause_size"])
 
@@ -183,6 +194,8 @@ def stats(data, timeout):
         "mean_first_learned_rate": mean_first_learned_rate, 
         "mean_nb_pos_query": mean_nb_pos_query, 
         "mean_nb_neg_query": mean_nb_neg_query,
+        "mean_speed_pos_query": mean_speed_pos_query,
+        "mean_median_pos_query": mean_median_pos_query,
         "n_answer_timeouted": n_answer_timeouted,
         "mean_clause_size": mean_clause_size,
         "ncollapse": ncollapse,

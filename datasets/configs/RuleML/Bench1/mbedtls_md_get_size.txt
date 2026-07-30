@@ -1,0 +1,16 @@
+# Variables Setup
+nargs: 5
+types: PTR, PTR, UINT, UINT, UINT
+globals: false, false, false, false, false
+arch : X86-64
+
+
+# Emulator Options
+bin: datasets/binaries/crypt_and_hash
+binsec: datasets/binsec_ini/mbed/mbedtls_md_get_size.ini
+precond: (and(valid v0) (not (eq v3 #x00000000)))
+
+# Language
+bias: Valid_X, Alias_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, Eq_v2_1, Eq_v2_2, Eq_v2_3, Eq_v2_4, Eq_v2_5, Eq_v2_6, Eq_v2_7, GT_X_0, Eq_X_Y
+
+# Acquisition Options

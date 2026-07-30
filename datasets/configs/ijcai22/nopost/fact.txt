@@ -2,6 +2,7 @@
 nargs: 1
 types: INT
 globals: false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/fact

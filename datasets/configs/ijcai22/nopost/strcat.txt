@@ -2,6 +2,7 @@
 nargs: 2
 types: PTR, PTR
 globals: false, false
+arch : X86-64
 
 # Emulator Options
 bin: datasets/binaries/strcat
@@ -14,4 +15,14 @@ precond: (and (valid v0) (valid v1) (or (strleneq v1 #x00000000) (not (overlap v
 bias: Valid_X, Alias_X_Y, PtrLT_X_Y, PtrGT_X_Y, Deref_X_Y, Overlap_X_Y, StrlenEq_X_0, Eq_X_0, LT_X_0, GT_X_0, Eq_X_Y, LT_X_Y, GT_X_Y
 
 # Conacq options
+active: true
+disj: mss
+strat: true
+back: false
+verbose: true
+json: false
+timeout: 3600
+emultimeout: 5
+action_emultimeout: false
+simplify: true
 
